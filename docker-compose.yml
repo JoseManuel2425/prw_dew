@@ -17,3 +17,5 @@ services:
       - ./frontend:/app
       - /app/node_modules
     command: npm start
+    environment:
+      - CHOKIDAR_USEPOLLING=true
