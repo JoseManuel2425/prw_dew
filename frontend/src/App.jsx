@@ -1,25 +1,31 @@
 import React, { useEffect, useState } from 'react';
 import Register from './Register';
+import Login from './Login';
 
 function App() {
   const [pokemonList, setPokemonList] = useState([]);
-  const [view, setView] = useState("home");
   const [team, setTeam] = useState([]);
-  const [loading, setLoading] = useState(true); // Nuevo estado
+  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(null); // Nuevo estado para el usuario autenticado
+  const [showRegister, setShowRegister] = useState(false); // Controla si mostrar registro
 
   useEffect(() => {
-  // Solo cargar una vez al montar el componente
+  if (!user) {
+    setLoading(false); // <- Añade esto para quitar la pantalla de carga si no hay usuario
+    return;
+  }
+  setLoading(true);
   fetch("http://localhost:8000/")
     .then(res => res.json())
     .then(data => {
       setPokemonList(data.pokemons);
-      setLoading(false); // Ocultar loading cuando termina
+      setLoading(false);
     })
     .catch(err => {
       console.error("Error al conectar con el backend:", err);
       setLoading(false);
     });
-  }, []);
+}, [user]);
 
   // Añadir un Pokémon al equipo
   const addToTeam = (pokemon) => {
@@ -82,9 +88,37 @@ function App() {
     </div>
   );
 
+  // Si está cargando, mostrar pantalla de carga
+  if (loading) return <LoadingScreen />;
+
+  // Si no hay usuario autenticado, mostrar login o registro
+  if (!user) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: 60 }}>
+        {!showRegister ? (
+          <>
+            <Login onLogin={setUser} />
+            <div style={{ margin: 16 }}>
+              ¿No tienes cuenta?{" "}
+              <button onClick={() => setShowRegister(true)}>Regístrate</button>
+            </div>
+          </>
+        ) : (
+          <>
+            <Register onRegister={() => setShowRegister(false)} />
+            <div style={{ margin: 16 }}>
+              ¿Ya tienes cuenta?{" "}
+              <button onClick={() => setShowRegister(false)}>Inicia sesión</button>
+            </div>
+          </>
+        )}
+      </div>
+    );
+  }
+
+  // Si hay usuario autenticado, mostrar la app principal
   return (
     <>
-      {loading && <LoadingScreen />}
       <div style={{ display: "flex", flexDirection: "row", minHeight: "100vh" }}>
         {/* Contenedor izquierdo: equipo */}
         <div
@@ -125,46 +159,41 @@ function App() {
 
         {/* Contenedor derecho: vista principal */}
         <div style={{ flex: 1, padding: "24px" }}>
-          <button onClick={() => setView("home")}>Inicio</button>
-          <button onClick={() => setView("register")}>Registrarse</button>
-
-          {view === "home" && (
-            <>
-              <h1>Los 151 Pokémon originales</h1>
+          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16 }}>
+            <span style={{ marginRight: 12 }}>Hola, {user}</span>
+            <button onClick={() => { setUser(null); setTeam([]); }}>Cerrar sesión</button>
+          </div>
+          <h1>Los 151 Pokémon originales</h1>
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: "16px",
+              justifyContent: "center"
+            }}
+          >
+            {availablePokemons.map((pokemon, index) => (
               <div
+                key={pokemon.name}
                 style={{
-                  display: "flex",
-                  flexWrap: "wrap",
-                  gap: "16px",
-                  justifyContent: "center"
+                  width: "120px",
+                  textAlign: "center",
+                  border: "1px solid #eee",
+                  borderRadius: "8px",
+                  padding: "8px",
+                  background: "#fafafa",
+                  opacity: team.length >= 6 ? 0.5 : 1,
+                  cursor: team.length < 6 ? "pointer" : "not-allowed"
                 }}
+                onClick={() => addToTeam(pokemon)}
+                title={team.length < 6 ? "Añadir al equipo" : "Equipo lleno"}
               >
-                {availablePokemons.map((pokemon, index) => (
-                  <div
-                    key={pokemon.name}
-                    style={{
-                      width: "120px",
-                      textAlign: "center",
-                      border: "1px solid #eee",
-                      borderRadius: "8px",
-                      padding: "8px",
-                      background: "#fafafa",
-                      opacity: team.length >= 6 ? 0.5 : 1,
-                      cursor: team.length < 6 ? "pointer" : "not-allowed"
-                    }}
-                    onClick={() => addToTeam(pokemon)}
-                    title={team.length < 6 ? "Añadir al equipo" : "Equipo lleno"}
-                  >
-                    {index + 1}. {pokemon.name}
-                    <br />
-                    <img src={pokemon.image} alt={pokemon.name} />
-                  </div>
-                ))}
+                {index + 1}. {pokemon.name}
+                <br />
+                <img src={pokemon.image} alt={pokemon.name} />
               </div>
-            </>
-          )}
-
-          {view === "register" && <Register />}
+            ))}
+          </div>
         </div>
       </div>
     </>
