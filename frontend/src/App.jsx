@@ -6,26 +6,44 @@ function App() {
   const [pokemonList, setPokemonList] = useState([]);
   const [team, setTeam] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState(null); // Nuevo estado para el usuario autenticado
-  const [showRegister, setShowRegister] = useState(false); // Controla si mostrar registro
+  const [user, setUser] = useState(null);
+  const [showRegister, setShowRegister] = useState(false);
+
+  // Filtros
+  const [typeFilter, setTypeFilter] = useState("");
+  const [generationFilter, setGenerationFilter] = useState("");
 
   useEffect(() => {
-  if (!user) {
-    setLoading(false); // <- Añade esto para quitar la pantalla de carga si no hay usuario
-    return;
-  }
-  setLoading(true);
-  fetch("http://localhost:8000/")
-    .then(res => res.json())
-    .then(data => {
-      setPokemonList(data.pokemons);
+    fetch("http://localhost:8000/")
+      .then(res => res.json())
+      .then(data => {
+        setPokemonList(data.pokemons);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error("Error al conectar con el backend:", err);
+        setLoading(false);
+      });
+    /* if (!user) {
       setLoading(false);
-    })
-    .catch(err => {
-      console.error("Error al conectar con el backend:", err);
-      setLoading(false);
-    });
-}, [user]);
+      return;
+    }
+    setLoading(true);
+    fetch("http://localhost:8000/")
+      .then(res => res.json())
+      .then(data => {
+        setPokemonList(data.pokemons);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error("Error al conectar con el backend:", err);
+        setLoading(false);
+      }); */
+  }, [user]);
+
+  // Obtener tipos y generaciones únicos
+  const allTypes = Array.from(new Set(pokemonList.flatMap(p => p.types || [])));
+  const allGenerations = Array.from(new Set(pokemonList.map(p => p.generation))).sort();
 
   // Añadir un Pokémon al equipo
   const addToTeam = (pokemon) => {
@@ -39,9 +57,12 @@ function App() {
     setTeam(team.filter(p => p.name !== pokemon.name));
   };
 
-  // Filtrar los Pokémon que no están en el equipo
+  // Filtrar los Pokémon que no están en el equipo y aplicar filtros
   const availablePokemons = pokemonList.filter(
-    p => !team.some(tp => tp.name === p.name)
+    p =>
+      !team.some(tp => tp.name === p.name) &&
+      (typeFilter === "" || (p.types && p.types.includes(typeFilter))) &&
+      (generationFilter === "" || p.generation === generationFilter)
   );
 
   // Componente de pantalla de carga
@@ -72,7 +93,6 @@ function App() {
           animation: "loadingBar 1.2s linear infinite"
         }} />
       </div>
-      {/* Animación CSS */}
       <style>
         {`
           @keyframes loadingBar {
@@ -92,7 +112,7 @@ function App() {
   if (loading) return <LoadingScreen />;
 
   // Si no hay usuario autenticado, mostrar login o registro
-  if (!user) {
+  /* if (!user) {
     return (
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: 60 }}>
         {!showRegister ? (
@@ -114,7 +134,7 @@ function App() {
         )}
       </div>
     );
-  }
+  } */
 
   // Si hay usuario autenticado, mostrar la app principal
   return (
@@ -164,6 +184,27 @@ function App() {
             <button onClick={() => { setUser(null); setTeam([]); }}>Cerrar sesión</button>
           </div>
           <h1>Los 151 Pokémon originales</h1>
+          {/* Filtros */}
+          <div style={{ display: "flex", gap: "24px", marginBottom: "24px", justifyContent: "center" }}>
+            <div>
+              <label style={{ marginRight: 8 }}>Filtrar por tipo:</label>
+              <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
+                <option value="">Todos</option>
+                {allTypes.map(type => (
+                  <option key={type} value={type}>{type}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label style={{ marginRight: 8 }}>Filtrar por generación:</label>
+              <select value={generationFilter} onChange={e => setGenerationFilter(e.target.value)}>
+                <option value="">Todas</option>
+                {allGenerations.map(gen => (
+                  <option key={gen} value={gen}>{gen.replace('generation-', 'Gen ')}</option>
+                ))}
+              </select>
+            </div>
+          </div>
           <div
             style={{
               display: "flex",
