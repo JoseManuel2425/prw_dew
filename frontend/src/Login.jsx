@@ -19,21 +19,70 @@ function Login({ onLogin }) {
   };
 
   return (
-    <div>
-      <h2>Iniciar sesión</h2>
+    <div style={{
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "center",
+      minHeight: "340px",
+      minWidth: "320px",
+      background: "#fff",
+      borderRadius: "16px",
+      boxShadow: "0 4px 24px #0002",
+      padding: "32px 28px",
+      margin: "32px 0"
+    }}>
+      <h2 style={{
+        marginBottom: 24,
+        fontFamily: "monospace",
+        color: "#3b4cca",
+        fontWeight: 700
+      }}>Iniciar sesión</h2>
       <input
         type="text"
         placeholder="Usuario"
         value={username}
         onChange={e => setUsername(e.target.value)}
+        style={{
+          marginBottom: 16,
+          padding: "10px",
+          borderRadius: "8px",
+          border: "1px solid #bbb",
+          width: "100%",
+          fontSize: "1rem"
+        }}
       />
       <input
         type="password"
         placeholder="Contraseña"
         value={password}
         onChange={e => setPassword(e.target.value)}
+        style={{
+          marginBottom: 24,
+          padding: "10px",
+          borderRadius: "8px",
+          border: "1px solid #bbb",
+          width: "100%",
+          fontSize: "1rem"
+        }}
       />
-      <button onClick={handleLogin}>Entrar</button>
+      <button
+        onClick={handleLogin}
+        style={{
+          background: "linear-gradient(90deg, #ffcb05 60%, #3b4cca 100%)",
+          color: "#222",
+          border: "none",
+          borderRadius: "8px",
+          padding: "10px 0",
+          width: "100%",
+          fontWeight: 700,
+          fontSize: "1rem",
+          cursor: "pointer",
+          boxShadow: "0 2px 8px #0001"
+        }}
+      >
+        Entrar
+      </button>
     </div>
   );
 }
