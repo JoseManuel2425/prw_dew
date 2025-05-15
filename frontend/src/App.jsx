@@ -13,6 +13,10 @@ function App() {
   const [typeFilter, setTypeFilter] = useState("");
   const [generationFilter, setGenerationFilter] = useState("");
 
+  // Paginación
+  const [page, setPage] = useState(1);
+  const pageSize = 60;
+
   useEffect(() => {
     fetch("http://localhost:8000/")
       .then(res => res.json())
@@ -24,21 +28,6 @@ function App() {
         console.error("Error al conectar con el backend:", err);
         setLoading(false);
       });
-    /* if (!user) {
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    fetch("http://localhost:8000/")
-      .then(res => res.json())
-      .then(data => {
-        setPokemonList(data.pokemons);
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error("Error al conectar con el backend:", err);
-        setLoading(false);
-      }); */
   }, [user]);
 
   const allTypes = Array.from(new Set(pokemonList.flatMap(p => p.types || [])));
@@ -54,12 +43,21 @@ function App() {
     setTeam(team.filter(p => p.name !== pokemon.name));
   };
 
-  const availablePokemons = pokemonList.filter(
+  // Filtros y paginación
+  const filteredPokemons = pokemonList.filter(
     p =>
       !team.some(tp => tp.name === p.name) &&
       (typeFilter === "" || (p.types && p.types.includes(typeFilter))) &&
       (generationFilter === "" || p.generation === generationFilter)
   );
+
+  const totalPages = Math.ceil(filteredPokemons.length / pageSize);
+  const paginatedPokemons = filteredPokemons.slice((page - 1) * pageSize, page * pageSize);
+
+  // Si cambian los filtros, vuelve a la página 1
+  useEffect(() => {
+    setPage(1);
+  }, [typeFilter, generationFilter]);
 
   const LoadingScreen = () => (
     <div style={{
@@ -104,30 +102,6 @@ function App() {
   );
 
   if (loading) return <LoadingScreen />;
-
-  /* if (!user) {
-    return (
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: 60 }}>
-        {!showRegister ? (
-          <>
-            <Login onLogin={setUser} />
-            <div style={{ margin: 16 }}>
-              ¿No tienes cuenta?{" "}
-              <button onClick={() => setShowRegister(true)}>Regístrate</button>
-            </div>
-          </>
-        ) : (
-          <>
-            <Register onRegister={() => setShowRegister(false)} />
-            <div style={{ margin: 16 }}>
-              ¿Ya tienes cuenta?{" "}
-              <button onClick={() => setShowRegister(false)}>Inicia sesión</button>
-            </div>
-          </>
-        )}
-      </div>
-    );
-  } */
 
   // --- DISEÑO PRINCIPAL ---
   return (
@@ -213,25 +187,25 @@ function App() {
       }}>
         <div style={{
           background: "#444",
-          borderRadius: 16,
+          borderRadius: 24,
           boxShadow: "0 4px 24px #0008",
-          padding: 24,
-          minWidth: 700,
-          minHeight: 600
+          padding: 36,
+          minWidth: 1200,
+          minHeight: 800
         }}>
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 24 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 32 }}>
             <div>
-              <span style={{ color: "#ffcb05", fontWeight: "bold", fontSize: 24 }}>Pokédex</span>
-              <span style={{ color: "#fff", marginLeft: 16 }}>Hola, {user}</span>
+              <span style={{ color: "#ffcb05", fontWeight: "bold", fontSize: 32 }}>Pokédex</span>
+              <span style={{ color: "#fff", marginLeft: 24, fontSize: 20 }}>Hola, {user}</span>
             </div>
-            <div style={{ display: "flex", gap: 16 }}>
-              <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} style={{ borderRadius: 8, padding: 4 }}>
+            <div style={{ display: "flex", gap: 24 }}>
+              <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} style={{ borderRadius: 12, padding: 8, fontSize: 16 }}>
                 <option value="">Todos los tipos</option>
                 {allTypes.map(type => (
                   <option key={type} value={type}>{type}</option>
                 ))}
               </select>
-              <select value={generationFilter} onChange={e => setGenerationFilter(e.target.value)} style={{ borderRadius: 8, padding: 4 }}>
+              <select value={generationFilter} onChange={e => setGenerationFilter(e.target.value)} style={{ borderRadius: 12, padding: 8, fontSize: 16 }}>
                 <option value="">Todas las generaciones</option>
                 {allGenerations.map(gen => (
                   <option key={gen} value={gen}>{gen.replace('generation-', 'Gen ')}</option>
@@ -242,22 +216,22 @@ function App() {
           {/* Cuadrícula de Pokémon */}
           <div style={{
             display: "grid",
-            gridTemplateColumns: "repeat(10, 60px)",
-            gridGap: "12px",
+            gridTemplateColumns: "repeat(10, 90px)",
+            gridGap: "18px",
             background: "#888",
-            borderRadius: 12,
-            padding: 16,
+            borderRadius: 18,
+            padding: 24,
             justifyContent: "center"
           }}>
-            {availablePokemons.map((pokemon, idx) => (
+            {paginatedPokemons.map((pokemon, idx) => (
               <div
                 key={pokemon.name}
                 style={{
-                  width: 60,
-                  height: 60,
+                  width: 90,
+                  height: 90,
                   background: "#222",
-                  border: "2px solid #555",
-                  borderRadius: 8,
+                  border: "3px solid #555",
+                  borderRadius: 12,
                   display: "flex",
                   flexDirection: "column",
                   alignItems: "center",
@@ -270,9 +244,45 @@ function App() {
                 onClick={() => addToTeam(pokemon)}
                 title={team.length < 6 ? "Añadir al equipo" : "Equipo lleno"}
               >
-                <img src={pokemon.image} alt={pokemon.name} style={{ width: 36, filter: "drop-shadow(0 0 2px #0008)" }} />
+                <img src={pokemon.image} alt={pokemon.name} style={{ width: 48, filter: "drop-shadow(0 0 2px #0008)" }} />
               </div>
             ))}
+          </div>
+          {/* Paginación */}
+          <div style={{ display: "flex", justifyContent: "center", marginTop: 24, gap: 16 }}>
+            <button
+              onClick={() => setPage(page - 1)}
+              disabled={page === 1}
+              style={{
+                padding: "8px 18px",
+                borderRadius: 8,
+                border: "none",
+                background: "#ffcb05",
+                color: "#222",
+                fontWeight: "bold",
+                fontSize: 18,
+                cursor: page === 1 ? "not-allowed" : "pointer",
+                opacity: page === 1 ? 0.5 : 1
+              }}
+            >Anterior</button>
+            <span style={{ color: "#fff", fontSize: 18, alignSelf: "center" }}>
+              Página {page} de {totalPages}
+            </span>
+            <button
+              onClick={() => setPage(page + 1)}
+              disabled={page === totalPages}
+              style={{
+                padding: "8px 18px",
+                borderRadius: 8,
+                border: "none",
+                background: "#ffcb05",
+                color: "#222",
+                fontWeight: "bold",
+                fontSize: 18,
+                cursor: page === totalPages ? "not-allowed" : "pointer",
+                opacity: page === totalPages ? 0.5 : 1
+              }}
+            >Siguiente</button>
           </div>
         </div>
       </div>
