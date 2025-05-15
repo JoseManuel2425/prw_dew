@@ -20,8 +20,10 @@ function App() {
   const [page, setPage] = useState(1);
   const pageSize = 60;
 
-  // Selector de cuadrícula
+  // Selector de cuadrícula y equipo
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [focusArea, setFocusArea] = useState("grid"); // "grid" o "team"
+  const [selectedTeamIndex, setSelectedTeamIndex] = useState(0);
 
   useEffect(() => {
     if (!user) {
@@ -74,53 +76,97 @@ function App() {
   const totalPages = Math.ceil(filteredPokemons.length / pageSize);
   const paginatedPokemons = filteredPokemons.slice((page - 1) * pageSize, page * pageSize);
 
-  // Si cambian los filtros o la página, resetea el selector
+  // Si cambian los filtros, resetea selector y página
   useEffect(() => {
     setSelectedIndex(0);
     setPage(1);
+    setFocusArea("grid");
   }, [typeFilter, generationFilter]);
 
+  // Si cambia la página, resetea el selector de cuadrícula
   useEffect(() => {
     setSelectedIndex(0);
+    setFocusArea("grid");
   }, [page]);
 
-  // Manejo de teclado para mover el selector
+  // Si cambia el equipo y el índice seleccionado es inválido, ajústalo
+  useEffect(() => {
+    if (selectedTeamIndex >= team.length && team.length > 0) {
+      setSelectedTeamIndex(team.length - 1);
+    }
+  }, [team, selectedTeamIndex]);
+
+  // Manejo de teclado para mover el selector y alternar entre grid/equipo
   const handleKeyDown = useCallback(
     (e) => {
-      if (!user || paginatedPokemons.length === 0) return;
-      const cols = 10;
-      const rows = Math.ceil(pageSize / cols);
-      let row = Math.floor(selectedIndex / cols);
-      let col = selectedIndex % cols;
+      if (!user) return;
 
-      // Evita el scroll con las flechas
-      if (
-        e.key === "ArrowRight" ||
-        e.key === "ArrowLeft" ||
-        e.key === "ArrowDown" ||
-        e.key === "ArrowUp"
-      ) {
+      // Cambiar foco con Tab
+      if (e.key === "Tab") {
         e.preventDefault();
+        if (focusArea === "grid" && team.length > 0) {
+          setFocusArea("team");
+          setSelectedTeamIndex(0);
+        } else {
+          setFocusArea("grid");
+        }
+        return;
       }
 
-      if (e.key === "ArrowRight") {
-        if (col < cols - 1 && selectedIndex + 1 < paginatedPokemons.length) setSelectedIndex(selectedIndex + 1);
+      // --- Selector en cuadrícula principal ---
+      if (focusArea === "grid" && paginatedPokemons.length > 0) {
+        const cols = 10;
+        const rows = Math.ceil(pageSize / cols);
+        let row = Math.floor(selectedIndex / cols);
+        let col = selectedIndex % cols;
+
+        if (
+          e.key === "ArrowRight" ||
+          e.key === "ArrowLeft" ||
+          e.key === "ArrowDown" ||
+          e.key === "ArrowUp"
+        ) {
+          e.preventDefault();
+        }
+
+        if (e.key === "ArrowRight") {
+          if (col < cols - 1 && selectedIndex + 1 < paginatedPokemons.length) setSelectedIndex(selectedIndex + 1);
+        }
+        if (e.key === "ArrowLeft") {
+          if (col > 0) setSelectedIndex(selectedIndex - 1);
+        }
+        if (e.key === "ArrowDown") {
+          if (row < rows - 1 && selectedIndex + cols < paginatedPokemons.length) setSelectedIndex(selectedIndex + cols);
+        }
+        if (e.key === "ArrowUp") {
+          if (row > 0) setSelectedIndex(selectedIndex - cols);
+        }
+        if (e.key === "Enter") {
+          const selected = paginatedPokemons[selectedIndex];
+          if (selected) addToTeam(selected);
+        }
       }
-      if (e.key === "ArrowLeft") {
-        if (col > 0) setSelectedIndex(selectedIndex - 1);
-      }
-      if (e.key === "ArrowDown") {
-        if (row < rows - 1 && selectedIndex + cols < paginatedPokemons.length) setSelectedIndex(selectedIndex + cols);
-      }
-      if (e.key === "ArrowUp") {
-        if (row > 0) setSelectedIndex(selectedIndex - cols);
-      }
-      if (e.key === "Enter") {
-        const selected = paginatedPokemons[selectedIndex];
-        if (selected) addToTeam(selected);
+
+      // --- Selector en equipo ---
+      if (focusArea === "team" && team.length > 0) {
+        if (
+          e.key === "ArrowDown" ||
+          e.key === "ArrowUp"
+        ) {
+          e.preventDefault();
+        }
+        if (e.key === "ArrowDown") {
+          if (selectedTeamIndex < team.length - 1) setSelectedTeamIndex(selectedTeamIndex + 1);
+        }
+        if (e.key === "ArrowUp") {
+          if (selectedTeamIndex > 0) setSelectedTeamIndex(selectedTeamIndex - 1);
+        }
+        if (e.key === "Enter") {
+          removeFromTeam(team[selectedTeamIndex]);
+        }
       }
     },
-    [selectedIndex, paginatedPokemons, user]
+    [selectedIndex, paginatedPokemons, user, focusArea, team, selectedTeamIndex]
   );
 
   useEffect(() => {
@@ -234,17 +280,24 @@ function App() {
           textAlign: "center"
         }}>
           <div style={{ marginBottom: 8 }}>Equipo</div>
-          {team.map(pokemon => (
+          {team.map((pokemon, idx) => (
             <div
               key={pokemon.name}
               style={{
                 margin: "4px 0",
-                background: "#fff3",
+                background: focusArea === "team" && selectedTeamIndex === idx ? "#ffcb05" : "#fff3",
                 borderRadius: 6,
                 padding: 2,
-                cursor: "pointer"
+                cursor: "pointer",
+                color: focusArea === "team" && selectedTeamIndex === idx ? "#222" : undefined,
+                fontWeight: focusArea === "team" && selectedTeamIndex === idx ? "bold" : undefined,
+                outline: focusArea === "team" && selectedTeamIndex === idx ? "2px solid #ffcb05" : "none"
               }}
               onClick={() => removeFromTeam(pokemon)}
+              onMouseEnter={() => {
+                setFocusArea("team");
+                setSelectedTeamIndex(idx);
+              }}
               title="Quitar del equipo"
             >
               <img src={pokemon.image} alt={pokemon.name} style={{ width: 32, display: "block", margin: "0 auto" }} />
@@ -347,7 +400,7 @@ function App() {
                   width: 90,
                   height: 90,
                   background: "#222",
-                  border: selectedIndex === idx ? "3px solid #ffcb05" : "3px solid #555",
+                  border: focusArea === "grid" && selectedIndex === idx ? "3px solid #ffcb05" : "3px solid #555",
                   borderRadius: 12,
                   display: "flex",
                   flexDirection: "column",
@@ -356,10 +409,13 @@ function App() {
                   cursor: team.length < 6 ? "pointer" : "not-allowed",
                   opacity: team.length >= 6 ? 0.5 : 1,
                   transition: "box-shadow 0.2s, border 0.2s",
-                  boxShadow: selectedIndex === idx ? "0 0 16px #ffcb0588" : "0 2px 8px #0004"
+                  boxShadow: focusArea === "grid" && selectedIndex === idx ? "0 0 16px #ffcb0588" : "0 2px 8px #0004"
                 }}
                 onClick={() => addToTeam(pokemon)}
-                onMouseEnter={() => setSelectedIndex(idx)}
+                onMouseEnter={() => {
+                  setFocusArea("grid");
+                  setSelectedIndex(idx);
+                }}
                 title={team.length < 6 ? "Añadir al equipo" : "Equipo lleno"}
               >
                 <img src={pokemon.image} alt={pokemon.name} style={{ width: 48, filter: "drop-shadow(0 0 2px #0008)" }} />
