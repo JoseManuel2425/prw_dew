@@ -1,21 +1,6 @@
 import React, { useEffect, useState } from 'react';
-<<<<<<< Updated upstream
-import Register from './Register';
-
-function App() {
-  const [pokemonList, setPokemonList] = useState([]);
-  const [view, setView] = useState("home");
-
-  useEffect(() => {
-    if (view === "home") {
-      fetch("http://localhost:8000/")
-        .then(res => res.json())
-        .then(data => setPokemonList(data.pokemons))
-        .catch(err => console.error("Error al conectar con el backend:", err));
-=======
 import Register from './components/Register';
 import Login from './components/Login';
-import Combat from './Combat';
 
 function App() {
   const [pokemonList, setPokemonList] = useState([]);
@@ -23,7 +8,10 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
   const [showRegister, setShowRegister] = useState(false);
-  const [view, setView] = useState("home"); // 👈 NUEVO estado
+
+  // Filtros
+  const [typeFilter, setTypeFilter] = useState("");
+  const [generationFilter, setGenerationFilter] = useState("");
 
   useEffect(() => {
     if (!user) {
@@ -34,56 +22,64 @@ function App() {
     fetch("http://localhost:8000/")
       .then(res => res.json())
       .then(data => {
-        setPokemonList(data.pokemons);
+        if (data?.pokemons) {
+          setPokemonList(data.pokemons);
+        } else {
+          console.warn("Respuesta inesperada:", data);
+          setPokemonList([]);
+        }
         setLoading(false);
       })
       .catch(err => {
         console.error("Error al conectar con el backend:", err);
+        setPokemonList([]);
         setLoading(false);
       });
   }, [user]);
 
+  const allTypes = Array.from(new Set((pokemonList || []).flatMap(p => p.types || [])));
+  const allGenerations = Array.from(new Set((pokemonList || []).map(p => p.generation))).sort();
+
   const addToTeam = (pokemon) => {
     if (team.length < 6 && !team.some(p => p.name === pokemon.name)) {
       setTeam([...team, pokemon]);
->>>>>>> Stashed changes
     }
-  }, [view]);
+  };
 
-<<<<<<< Updated upstream
-  return (
-    <div>
-      <button onClick={() => setView("home")}>Inicio</button>
-      <button onClick={() => setView("register")}>Registrarse</button>
-
-      {view === "home" && (
-        <>
-          <h1>Los 151 Pokémon originales</h1>
-          <ul>
-            {pokemonList.map((pokemon, index) => (
-              <li key={index}>
-=======
   const removeFromTeam = (pokemon) => {
     setTeam(team.filter(p => p.name !== pokemon.name));
   };
 
   const availablePokemons = pokemonList.filter(
-    p => !team.some(tp => tp.name === p.name)
+    p =>
+      !team.some(tp => tp.name === p.name) &&
+      (typeFilter === "" || (p.types && p.types.includes(typeFilter))) &&
+      (generationFilter === "" || p.generation === generationFilter)
   );
 
   const LoadingScreen = () => (
     <div style={{
-      position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-      display: "flex", flexDirection: "column", justifyContent: "center",
-      alignItems: "center", background: "#fff", zIndex: 9999
+      position: "fixed",
+      top: 0, left: 0, right: 0, bottom: 0,
+      display: "flex",
+      flexDirection: "column",
+      justifyContent: "center",
+      alignItems: "center",
+      background: "#222",
+      zIndex: 9999
     }}>
-      <h1 style={{ fontFamily: "monospace", fontSize: "2.5rem", marginBottom: "24px", color: "#121212" }}>Pokemon</h1>
+      <h1 style={{ fontFamily: "monospace", fontSize: "2.5rem", marginBottom: "24px", color: "#ffcb05" }}>Pokédex</h1>
       <div style={{
-        width: "220px", height: "18px", background: "#eee", borderRadius: "10px",
-        overflow: "hidden", boxShadow: "0 2px 8px #0002"
+        width: "220px",
+        height: "18px",
+        background: "#eee",
+        borderRadius: "10px",
+        overflow: "hidden",
+        boxShadow: "0 2px 8px #0002"
       }}>
         <div className="loading-bar" style={{
-          width: "100%", height: "100%",
+          width: "100%",
+          height: "100%",
           background: "linear-gradient(90deg, #ffcb05 40%, #3b4cca 100%)",
           animation: "loadingBar 1.2s linear infinite"
         }} />
@@ -129,83 +125,155 @@ function App() {
     );
   }
 
-  // 👇 Si la vista es "combat", mostramos solo Combat
-  if (view === "combat") {
-    return (
-      <div style={{ padding: 24 }}>
-        <button onClick={() => setView("home")}>Volver</button>
-        <Combat team={team} />
-      </div>
-    );
-  }
-
-  // 👇 Vista "home"
+  // --- DISEÑO PRINCIPAL ---
   return (
-    <>
-      <div style={{ display: "flex", flexDirection: "row", minHeight: "100vh" }}>
-        <div
-          style={{
-            width: "120px", background: "#e0e0e0", padding: "12px 4px",
-            display: "flex", flexDirection: "column", alignItems: "center", gap: "12px"
-          }}
-        >
-          <h3 style={{ fontSize: "1rem", margin: "0 0 8px 0" }}>Equipo</h3>
-          {team.map((pokemon, idx) => (
+    <div style={{
+      display: "flex",
+      minHeight: "100vh",
+      background: "#222",
+      fontFamily: "monospace"
+    }}>
+      {/* Panel Izquierdo */}
+      <div style={{
+        width: 120,
+        background: "#b71c1c",
+        color: "#fff",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        padding: "16px 0",
+        borderTopRightRadius: 16,
+        borderBottomRightRadius: 16,
+        boxShadow: "2px 0 8px #0008"
+      }}>
+        <div style={{
+          fontWeight: "bold",
+          fontSize: 22,
+          marginBottom: 24,
+          letterSpacing: 2
+        }}>Pokédex</div>
+        <div style={{
+          background: "#fff2",
+          borderRadius: 8,
+          padding: "8px 0",
+          width: "80%",
+          marginBottom: 24,
+          textAlign: "center"
+        }}>
+          <div style={{ marginBottom: 8 }}>Equipo</div>
+          {team.map(pokemon => (
             <div
               key={pokemon.name}
               style={{
-                width: "60px", textAlign: "center", border: "1px solid #bbb",
-                borderRadius: "8px", padding: "4px", background: "#fff", cursor: "pointer"
+                margin: "4px 0",
+                background: "#fff3",
+                borderRadius: 6,
+                padding: 2,
+                cursor: "pointer"
               }}
               onClick={() => removeFromTeam(pokemon)}
               title="Quitar del equipo"
             >
-              <img src={pokemon.image} alt={pokemon.name} style={{ width: "40px" }} />
+              <img src={pokemon.image} alt={pokemon.name} style={{ width: 32, display: "block", margin: "0 auto" }} />
               <div style={{ fontSize: "0.8rem" }}>{pokemon.name}</div>
             </div>
           ))}
           {team.length === 0 && (
-            <div style={{ color: "#888", fontSize: "0.9rem" }}>Vacío</div>
+            <div style={{ color: "#fff8", fontSize: "0.9rem" }}>Vacío</div>
           )}
         </div>
+        <button
+          onClick={() => { setUser(null); setTeam([]); }}
+          style={{
+            marginTop: "auto",
+            background: "#fff2",
+            color: "#fff",
+            border: "none",
+            borderRadius: 8,
+            padding: "8px 12px",
+            cursor: "pointer",
+            fontWeight: "bold"
+          }}
+        >
+          Cerrar sesión
+        </button>
+      </div>
 
-        <div style={{ flex: 1, padding: "24px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
+      {/* Panel Central */}
+      <div style={{
+        flex: 1,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        padding: "32px 0"
+      }}>
+        <div style={{
+          background: "#444",
+          borderRadius: 16,
+          boxShadow: "0 4px 24px #0008",
+          padding: 24,
+          minWidth: 700,
+          minHeight: 600
+        }}>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 24 }}>
             <div>
-              <span style={{ marginRight: 12 }}>Hola, {user}</span>
-              <button onClick={() => { setUser(null); setTeam([]); }}>Cerrar sesión</button>
+              <span style={{ color: "#ffcb05", fontWeight: "bold", fontSize: 24 }}>Pokédex</span>
+              <span style={{ color: "#fff", marginLeft: 16 }}>Hola, {user}</span>
             </div>
-            <button onClick={() => setView("combat")}>Ir a combate</button>
+            <div style={{ display: "flex", gap: 16 }}>
+              <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} style={{ borderRadius: 8, padding: 4 }}>
+                <option value="">Todos los tipos</option>
+                {allTypes.map(type => (
+                  <option key={type} value={type}>{type}</option>
+                ))}
+              </select>
+              <select value={generationFilter} onChange={e => setGenerationFilter(e.target.value)} style={{ borderRadius: 8, padding: 4 }}>
+                <option value="">Todas las generaciones</option>
+                {allGenerations.map(gen => (
+                  <option key={gen} value={gen}>{gen.replace('generation-', 'Gen ')}</option>
+                ))}
+              </select>
+            </div>
           </div>
-          <h1>Los 155 Pokémon originales</h1>
-          <div
-            style={{
-              display: "flex", flexWrap: "wrap", gap: "16px", justifyContent: "center"
-            }}
-          >
-            {availablePokemons.map((pokemon, index) => (
+          {/* Cuadrícula de Pokémon */}
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(10, 60px)",
+            gridGap: "12px",
+            background: "#888",
+            borderRadius: 12,
+            padding: 16,
+            justifyContent: "center"
+          }}>
+            {availablePokemons.map((pokemon, idx) => (
               <div
                 key={pokemon.name}
                 style={{
-                  width: "120px", textAlign: "center", border: "1px solid #eee",
-                  borderRadius: "8px", padding: "8px", background: "#fafafa",
+                  width: 60,
+                  height: 60,
+                  background: "#222",
+                  border: "2px solid #555",
+                  borderRadius: 8,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: team.length < 6 ? "pointer" : "not-allowed",
                   opacity: team.length >= 6 ? 0.5 : 1,
-                  cursor: team.length < 6 ? "pointer" : "not-allowed"
+                  transition: "box-shadow 0.2s",
+                  boxShadow: "0 2px 8px #0004"
                 }}
                 onClick={() => addToTeam(pokemon)}
                 title={team.length < 6 ? "Añadir al equipo" : "Equipo lleno"}
               >
->>>>>>> Stashed changes
-                {index + 1}. {pokemon.name}
-                <br />
-                <img src={pokemon.image} alt={pokemon.name} />
-              </li>
+                <img src={pokemon.image} alt={pokemon.name} style={{ width: 36, filter: "drop-shadow(0 0 2px #0008)" }} />
+              </div>
             ))}
-          </ul>
-        </>
-      )}
-
-      {view === "register" && <Register />}
+          </div>
+        </div>
+      </div>
+      {/* Panel Derecho (opcional) */}
+      <div style={{ width: 60 }}></div>
     </div>
   );
 }
