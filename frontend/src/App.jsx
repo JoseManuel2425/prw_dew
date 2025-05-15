@@ -1,12 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import Register from './Register';
-import Login from './Login';
+import Register from './components/Register';
+import Login from './components/Login';
 
 function App() {
   const [pokemonList, setPokemonList] = useState([]);
   const [team, setTeam] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => {
+    const storedUser = localStorage.getItem("user");
+    return storedUser ? JSON.parse(storedUser) : null;
+  });
   const [showRegister, setShowRegister] = useState(false);
 
   // Filtros
@@ -16,19 +19,35 @@ function App() {
   // Paginación
   const [page, setPage] = useState(1);
   const pageSize = 60;
-
+  alert(user);
   useEffect(() => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
     fetch("http://localhost:8000/")
       .then(res => res.json())
       .then(data => {
-        setPokemonList(data.pokemons);
+        if (data?.pokemons) {
+          setPokemonList(data.pokemons);
+        } else {
+          console.warn("Respuesta inesperada:", data);
+          setPokemonList([]);
+        }
         setLoading(false);
       })
       .catch(err => {
         console.error("Error al conectar con el backend:", err);
+        setPokemonList([]);
         setLoading(false);
       });
   }, [user]);
+
+  const handleLogin = (userData) => {
+    setUser(userData);
+    localStorage.setItem("user", JSON.stringify(userData));
+  };
 
   const allTypes = Array.from(new Set(pokemonList.flatMap(p => p.types || [])));
   const allGenerations = Array.from(new Set(pokemonList.map(p => p.generation))).sort();
@@ -103,6 +122,30 @@ function App() {
 
   if (loading) return <LoadingScreen />;
 
+  if (!user) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: 60 }}>
+        {!showRegister ? (
+          <>
+            <Login onLogin={handleLogin} />
+            <div style={{ margin: 16 }}>
+              ¿No tienes cuenta?{" "}
+              <button onClick={() => setShowRegister(true)}>Regístrate</button>
+            </div>
+          </>
+        ) : (
+          <>
+            <Register onRegister={() => setShowRegister(false)} />
+            <div style={{ margin: 16 }}>
+              ¿Ya tienes cuenta?{" "}
+              <button onClick={() => setShowRegister(false)}>Inicia sesión</button>
+            </div>
+          </>
+        )}
+      </div>
+    );
+  }
+
   // --- DISEÑO PRINCIPAL ---
   return (
     <div style={{
@@ -161,7 +204,11 @@ function App() {
           )}
         </div>
         <button
-          onClick={() => { setUser(null); setTeam([]); }}
+          onClick={() => {
+            setUser(null);
+            setTeam([]);
+            localStorage.removeItem("user");
+          }}
           style={{
             marginTop: "auto",
             background: "#fff2",

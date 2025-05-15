@@ -7,7 +7,11 @@ services:
       - "8000:8000"
     volumes:
       - ./backend:/app
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    command: [ "./wait-for-it.sh", "db:3306", "--", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload" ]
+    depends_on:
+      - db
+    networks:
+      - backend
 
   frontend:
     build: ./frontend
@@ -19,3 +23,25 @@ services:
     command: npm start
     environment:
       - CHOKIDAR_USEPOLLING=true
+      - CHOKIDAR_INTERVAL=100
+  db:
+    image: mysql:8.0
+    container_name: mysql-db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword   # Cambia esta contraseña
+      MYSQL_DATABASE: pokedb              # Base de datos que se crea automáticamente
+      MYSQL_USER: user                    # Usuario adicional
+      MYSQL_PASSWORD: userpassword        # Contraseña del usuario
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - backend
+
+volumes:
+  mysql-data:
+
+networks:
+  backend:
