@@ -1,4 +1,5 @@
 import requests
+import random
 from fastapi import APIRouter
 
 router = APIRouter()
@@ -12,20 +13,53 @@ def get_pokemons():
     for species in species_list:
         species_data = requests.get(species["url"]).json()
 
-        # Queremos solo las primeras evoluciones (que no evolucionan de nadie)
         if species_data["evolves_from_species"] is None:
-            # Ahora necesitamos acceder al endpoint del Pokémon para sacar imagen y tipos
-            pokemon_res = requests.get(f"https://pokeapi.co/api/v2/pokemon/{species_data['id']}")
+            # Usar nombre en lugar de id para asegurar el endpoint correcto
+            pokemon_res = requests.get(f"https://pokeapi.co/api/v2/pokemon/{species_data['name']}")
+            if pokemon_res.status_code != 200:
+                continue
             pokemon_data = pokemon_res.json()
 
             types = [t["type"]["name"] for t in pokemon_data["types"]]
             generation = species_data["generation"]["name"]
+            stats = {stat['stat']['name']: stat['base_stat'] for stat in pokemon_data['stats']}
+            moves = pokemon_data.get("moves", [])
 
             pokemons.append({
                 "name": pokemon_data["name"],
                 "image": pokemon_data["sprites"]["front_default"],
                 "types": types,
-                "generation": generation
+                "stats": stats,
+                "generation": generation,
+                "moves": moves
             })
 
     return {"pokemons": pokemons}
+
+
+@router.get("/random-pokemon")
+def get_random_pokemon():
+    random_id = random.randint(1, 1025)
+
+    pokemon_res = requests.get(f"https://pokeapi.co/api/v2/pokemon/{random_id}")
+    if pokemon_res.status_code != 200:
+        return {"error": "Pokémon no encontrado"}
+
+    pokemon_data = pokemon_res.json()
+
+    # Extraemos los datos que quieres enviar:
+    name = pokemon_data["name"]
+    sprite = pokemon_data["sprites"]["front_default"]
+    types = [t["type"]["name"] for t in pokemon_data["types"]]
+    stats = {stat['stat']['name']: stat['base_stat'] for stat in pokemon_data['stats']}
+    moves = pokemon_data.get("moves", [])
+
+    pokemon = {
+        "name": name,
+        "image": sprite,
+        "types": types,
+        "stats": stats,
+        "moves": moves,
+    }
+
+    return {"pokemon": pokemon}
