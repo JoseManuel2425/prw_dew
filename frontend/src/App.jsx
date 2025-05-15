@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import Register from './components/Register';
 import Login from './components/Login';
 
@@ -19,7 +19,10 @@ function App() {
   // Paginación
   const [page, setPage] = useState(1);
   const pageSize = 60;
-  alert(user);
+
+  // Selector de cuadrícula
+  const [selectedIndex, setSelectedIndex] = useState(0);
+
   useEffect(() => {
     if (!user) {
       setLoading(false);
@@ -32,13 +35,11 @@ function App() {
         if (data?.pokemons) {
           setPokemonList(data.pokemons);
         } else {
-          console.warn("Respuesta inesperada:", data);
           setPokemonList([]);
         }
         setLoading(false);
       })
-      .catch(err => {
-        console.error("Error al conectar con el backend:", err);
+      .catch(() => {
         setPokemonList([]);
         setLoading(false);
       });
@@ -73,10 +74,61 @@ function App() {
   const totalPages = Math.ceil(filteredPokemons.length / pageSize);
   const paginatedPokemons = filteredPokemons.slice((page - 1) * pageSize, page * pageSize);
 
-  // Si cambian los filtros, vuelve a la página 1
+  // Si cambian los filtros o la página, resetea el selector
   useEffect(() => {
+    setSelectedIndex(0);
     setPage(1);
   }, [typeFilter, generationFilter]);
+
+  useEffect(() => {
+    setSelectedIndex(0);
+  }, [page]);
+
+  // Manejo de teclado para mover el selector
+  const handleKeyDown = useCallback(
+    (e) => {
+      if (!user || paginatedPokemons.length === 0) return;
+      const cols = 10;
+      const rows = Math.ceil(pageSize / cols);
+      let row = Math.floor(selectedIndex / cols);
+      let col = selectedIndex % cols;
+
+      // Evita el scroll con las flechas
+      if (
+        e.key === "ArrowRight" ||
+        e.key === "ArrowLeft" ||
+        e.key === "ArrowDown" ||
+        e.key === "ArrowUp"
+      ) {
+        e.preventDefault();
+      }
+
+      if (e.key === "ArrowRight") {
+        if (col < cols - 1 && selectedIndex + 1 < paginatedPokemons.length) setSelectedIndex(selectedIndex + 1);
+      }
+      if (e.key === "ArrowLeft") {
+        if (col > 0) setSelectedIndex(selectedIndex - 1);
+      }
+      if (e.key === "ArrowDown") {
+        if (row < rows - 1 && selectedIndex + cols < paginatedPokemons.length) setSelectedIndex(selectedIndex + cols);
+      }
+      if (e.key === "ArrowUp") {
+        if (row > 0) setSelectedIndex(selectedIndex - cols);
+      }
+      if (e.key === "Enter") {
+        const selected = paginatedPokemons[selectedIndex];
+        if (selected) addToTeam(selected);
+      }
+    },
+    [selectedIndex, paginatedPokemons, user]
+  );
+
+  useEffect(() => {
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handleKeyDown]);
+
+  const selectedPokemon = paginatedPokemons[selectedIndex];
 
   const LoadingScreen = () => (
     <div style={{
@@ -156,7 +208,7 @@ function App() {
     }}>
       {/* Panel Izquierdo */}
       <div style={{
-        width: 120,
+        width: 220,
         background: "#b71c1c",
         color: "#fff",
         display: "flex",
@@ -203,6 +255,24 @@ function App() {
             <div style={{ color: "#fff8", fontSize: "0.9rem" }}>Vacío</div>
           )}
         </div>
+        {/* Detalle del Pokémon seleccionado */}
+        {selectedPokemon && (
+          <div style={{
+            background: "#fff2",
+            borderRadius: 8,
+            padding: "12px 0",
+            width: "80%",
+            marginBottom: 24,
+            textAlign: "center",
+            boxShadow: "0 2px 8px #0003"
+          }}>
+            <div style={{ fontWeight: "bold", color: "#222", marginBottom: 4 }}>
+              #{selectedPokemon.id || (pokemonList.findIndex(p => p.name === selectedPokemon.name) + 1)}
+            </div>
+            <img src={selectedPokemon.image} alt={selectedPokemon.name} style={{ width: 48, marginBottom: 4 }} />
+            <div style={{ color: "#222", fontSize: "1rem" }}>{selectedPokemon.name}</div>
+          </div>
+        )}
         <button
           onClick={() => {
             setUser(null);
@@ -277,7 +347,7 @@ function App() {
                   width: 90,
                   height: 90,
                   background: "#222",
-                  border: "3px solid #555",
+                  border: selectedIndex === idx ? "3px solid #ffcb05" : "3px solid #555",
                   borderRadius: 12,
                   display: "flex",
                   flexDirection: "column",
@@ -285,10 +355,11 @@ function App() {
                   justifyContent: "center",
                   cursor: team.length < 6 ? "pointer" : "not-allowed",
                   opacity: team.length >= 6 ? 0.5 : 1,
-                  transition: "box-shadow 0.2s",
-                  boxShadow: "0 2px 8px #0004"
+                  transition: "box-shadow 0.2s, border 0.2s",
+                  boxShadow: selectedIndex === idx ? "0 0 16px #ffcb0588" : "0 2px 8px #0004"
                 }}
                 onClick={() => addToTeam(pokemon)}
+                onMouseEnter={() => setSelectedIndex(idx)}
                 title={team.length < 6 ? "Añadir al equipo" : "Equipo lleno"}
               >
                 <img src={pokemon.image} alt={pokemon.name} style={{ width: 48, filter: "drop-shadow(0 0 2px #0008)" }} />
