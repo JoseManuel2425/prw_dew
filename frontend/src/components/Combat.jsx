@@ -83,7 +83,7 @@ function Combat() {
     const typesParam = defenderTypes.join(",");
     const res = await fetch(`http://localhost:8000/effectiveness?attacking_type=${attackingType}&defender_types=${typesParam}`);
     const data = await res.json();
-    return data.effectiveness || 1;
+    return data.effectiveness || 0;
   }
 
   async function fightWildPokemon(moveName, yourPokemon) {
@@ -91,10 +91,19 @@ function Combat() {
 
     console.log(`¡${yourPokemon.name} usó ${moveName} contra ${randomPokemon.name}!`);
 
+    yourPokemon.IVs = {
+            hp: Math.floor(Math.random() * 32),
+            attack: Math.floor(Math.random() * 32),
+            defense: Math.floor(Math.random() * 32),
+            "special-attack": Math.floor(Math.random() * 32),
+            "special-defense": Math.floor(Math.random() * 32),
+            speed: Math.floor(Math.random() * 32),
+          };
+
     const moveRes = await fetch(`http://localhost:8000/move/${moveName}`);
     const moveData = await moveRes.json();
 
-    const power = moveData.power || 50;
+    const power = moveData.power || 0;
     const accuracy = moveData.accuracy || 100;
     const type = moveData.type;
     const damageType = moveData.damage_class || "physical";
@@ -102,20 +111,26 @@ function Combat() {
     const effectiveness = await fetchEffectiveness(type, randomPokemon.types);
 
     const randomNumber = Math.floor(Math.random() * (100 - 85 + 1)) + 85;
-    const level = yourPokemon.level || 50;
+    const level = yourPokemon.level || 5;
 
-    const atkStat = damageType === 'special' ? 'special-attack' : 'attack';
-    const defStat = damageType === 'special' ? 'special-defense' : 'defense';
+    const atkCat = damageType === 'special' ? 'special-attack' : 'attack';
+    const defCat = damageType === 'special' ? 'special-defense' : 'defense';
 
-    const atk = yourPokemon.stats?.[atkStat] || 50;
-    const def = randomPokemon.stats?.[defStat] || 50;
+    const atk = calculateActualStats(yourPokemon.stats, 5, yourPokemon.IVs)[atkCat];
+    const def = calculateActualStats(randomPokemon.stats, 5, randomPokemon.IVs)[defCat];
 
     const stab = yourPokemon.types.includes(type) ? 1.5 : 1;
 
-    const damage = 0.01 * stab * effectiveness * randomNumber *
-      ((((0.2 * level + 1) * atk * power) / (25 * def)) + 2);
+    let damage = 0;
+    console.log(atk, def);
+    if(power != 0) {
+      damage = 0.01 * stab * effectiveness * randomNumber *
+        ((((0.2 * 5 + 1) * atk * power) / (25 * def)) + 2);
+    }
 
     console.log(`→ Tipo del ataque: ${type}`);
+    console.log(`→ Categoría del ataque: ${atkCat}`);
+    console.log(`→ IV Pokemon (special-attack): ${yourPokemon.IVs["special-attack"]}`);
     console.log(`→ Efectividad: x${effectiveness}`);
     console.log(`→ Daño calculado: ${Math.round(damage)}`);
 

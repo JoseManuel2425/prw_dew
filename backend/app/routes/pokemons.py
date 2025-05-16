@@ -11,7 +11,7 @@ session = requests.Session()
 def get_pokemons():
     pokemons = []
     # Llamada inicial para obtener especies
-    res = session.get("https://pokeapi.co/api/v2/pokemon-species?limit=386")
+    res = session.get("https://pokeapi.co/api/v2/pokemon-species?limit=1025")
     res.raise_for_status()
     species_list = res.json()["results"]
 
@@ -47,7 +47,7 @@ def get_pokemons():
 @router.get("/random-pokemon")
 def get_random_pokemon():
     random_id = random.randint(1, 1025)
-    pokemon_res = session.get(f"https://pokeapi.co/api/v2/pokemon/{random_id}")
+    pokemon_res = session.get(f"https://pokeapi.co/api/v2/pokemon/138")
     if pokemon_res.status_code != 200:
         return {"error": "Pokémon no encontrado"}
 
@@ -96,10 +96,13 @@ def get_type_effectiveness(attacking_type: str, defender_types: str):
 
     multiplier = 1
     for d_type in defender_types:
+        print(d_type)
         if any(t["name"] == d_type for t in relations["double_damage_to"]):
             multiplier *= 2
+            print("Daño 2 " + str(multiplier))
         elif any(t["name"] == d_type for t in relations["half_damage_to"]):
             multiplier *= 0.5
+            print("Daño 0.5 " + str(multiplier))
         elif any(t["name"] == d_type for t in relations["no_damage_to"]):
             multiplier *= 0
 
