@@ -60,3 +60,47 @@ def get_random_pokemon():
         "moves": pokemon_data.get("moves", []),
     }
     return {"pokemon": pokemon}
+
+@router.get("/move/{move_name}")
+def get_move_data(move_name: str):
+    url = f"https://pokeapi.co/api/v2/move/{move_name.lower()}"
+    res = requests.get(url)
+
+    if res.status_code != 200:
+        return {"error": f"Movimiento '{move_name}' no encontrado."}
+
+    data = res.json()
+    return {
+        "name": data["name"],
+        "power": data["power"],
+        "type": data["type"]["name"],
+        "damage_class": data["damage_class"]["name"],
+        "accuracy": data["accuracy"],
+        "pp": data["pp"],
+        "effect": data["effect_entries"][0]["short_effect"] if data["effect_entries"] else None,
+    }
+
+@router.get("/effectiveness")
+def get_type_effectiveness(attacking_type: str, defender_types: str):
+    """
+    attacking_type: tipo del ataque, por ejemplo 'fire'
+    defender_types: string separado por comas con los tipos del defensor, ej: 'grass,steel'
+    """
+    res = requests.get(f"https://pokeapi.co/api/v2/type/{attacking_type.lower()}")
+    if res.status_code != 200:
+        return {"error": "Tipo de ataque inválido"}
+
+    data = res.json()
+    relations = data["damage_relations"]
+    defender_types = defender_types.lower().split(",")
+
+    multiplier = 1
+    for d_type in defender_types:
+        if any(t["name"] == d_type for t in relations["double_damage_to"]):
+            multiplier *= 2
+        elif any(t["name"] == d_type for t in relations["half_damage_to"]):
+            multiplier *= 0.5
+        elif any(t["name"] == d_type for t in relations["no_damage_to"]):
+            multiplier *= 0
+
+    return {"effectiveness": multiplier}
