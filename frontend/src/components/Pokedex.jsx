@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 function Pokedex({ user, setUser }) {
@@ -10,21 +10,61 @@ function Pokedex({ user, setUser }) {
     const [page, setPage] = useState(1);
     const pageSize = 60;
     const navigate = useNavigate();
+    const [showRegister, setShowRegister] = useState(false);
+
+    // Traduccion de tipos
+    const TYPE_TRANSLATIONS = {
+        normal: "Normal",
+        fire: "Fuego",
+        water: "Agua",
+        electric: "Eléctrico",
+        grass: "Planta",
+        ice: "Hielo",
+        fighting: "Lucha",
+        poison: "Veneno",
+        ground: "Tierra",
+        flying: "Volador",
+        psychic: "Psíquico",
+        bug: "Bicho",
+        rock: "Roca",
+        ghost: "Fantasma",
+        dragon: "Dragón",
+        dark: "Siniestro",
+        steel: "Acero",
+        fairy: "Hada"
+    };
+
+    // Selector de cuadrícula y equipo
+    const [selectedIndex, setSelectedIndex] = useState(0);
+    const [focusArea, setFocusArea] = useState("grid"); // "grid" o "team"
+    const [selectedTeamIndex, setSelectedTeamIndex] = useState(0);
 
     useEffect(() => {
+        if (!user) {
+        setLoading(false);
+        return;
+        }
         setLoading(true);
         fetch("http://localhost:8000/")
         .then(res => res.json())
         .then(data => {
-            setPokemonList(data?.pokemons || []);
+            if (data?.pokemons) {
+            setPokemonList(data.pokemons);
+            } else {
+            setPokemonList([]);
+            }
             setLoading(false);
         })
-        .catch(err => {
-            console.error("Error al conectar con el backend:", err);
+        .catch(() => {
             setPokemonList([]);
             setLoading(false);
         });
-    }, []);
+    }, [user]);
+
+    const handleLogin = (userData) => {
+        setUser(userData);
+        localStorage.setItem("user", JSON.stringify(userData));
+    };
 
     const allTypes = Array.from(new Set(pokemonList.flatMap(p => p.types || [])));
     const allGenerations = Array.from(new Set(pokemonList.map(p => p.generation))).sort();
@@ -39,6 +79,7 @@ function Pokedex({ user, setUser }) {
         setTeam(team.filter(p => p.name !== pokemon.name));
     };
 
+    // Filtros y paginación
     const filteredPokemons = pokemonList.filter(
         p =>
         !team.some(tp => tp.name === p.name) &&
@@ -49,9 +90,104 @@ function Pokedex({ user, setUser }) {
     const totalPages = Math.ceil(filteredPokemons.length / pageSize);
     const paginatedPokemons = filteredPokemons.slice((page - 1) * pageSize, page * pageSize);
 
+    // Si cambian los filtros, resetea selector y página
     useEffect(() => {
+        setSelectedIndex(0);
         setPage(1);
+        setFocusArea("grid");
     }, [typeFilter, generationFilter]);
+
+    // Si cambia la página, resetea el selector de cuadrícula
+    useEffect(() => {
+        setSelectedIndex(0);
+        setFocusArea("grid");
+    }, [page]);
+
+    // Si cambia el equipo y el índice seleccionado es inválido, ajústalo
+    useEffect(() => {
+        if (selectedTeamIndex >= team.length && team.length > 0) {
+        setSelectedTeamIndex(team.length - 1);
+        }
+    }, [team, selectedTeamIndex]);
+
+    // Manejo de teclado para mover el selector y alternar entre grid/equipo
+    const handleKeyDown = useCallback(
+    (e) => {
+        if (!user) return;
+
+        // Cambiar foco con Tab
+        if (e.key === "Tab") {
+        e.preventDefault();
+        if (focusArea === "grid" && team.length > 0) {
+            setFocusArea("team");
+            setSelectedTeamIndex(0);
+        } else {
+            setFocusArea("grid");
+        }
+        return;
+        }
+
+        // --- Selector en cuadrícula principal ---
+        if (focusArea === "grid" && paginatedPokemons.length > 0) {
+        const cols = 10;
+        const rows = Math.ceil(pageSize / cols);
+        let row = Math.floor(selectedIndex / cols);
+        let col = selectedIndex % cols;
+
+        switch (e.key) {
+            case "ArrowRight":
+            e.preventDefault();
+            if (col < cols - 1 && selectedIndex + 1 < paginatedPokemons.length) setSelectedIndex(selectedIndex + 1);
+            break;
+            case "ArrowLeft":
+            e.preventDefault();
+            if (col > 0) setSelectedIndex(selectedIndex - 1);
+            break;
+            case "ArrowDown":
+            e.preventDefault();
+            if (row < rows - 1 && selectedIndex + cols < paginatedPokemons.length) setSelectedIndex(selectedIndex + cols);
+            break;
+            case "ArrowUp":
+            e.preventDefault();
+            if (row > 0) setSelectedIndex(selectedIndex - cols);
+            break;
+            case "Enter":
+            const selected = paginatedPokemons[selectedIndex];
+            if (selected) addToTeam(selected);
+            break;
+            default:
+            break;
+        }
+        }
+
+        // --- Selector en equipo ---
+        if (focusArea === "team" && team.length > 0) {
+        switch (e.key) {
+            case "ArrowDown":
+            e.preventDefault();
+            if (selectedTeamIndex < team.length - 1) setSelectedTeamIndex(selectedTeamIndex + 1);
+            break;
+            case "ArrowUp":
+            e.preventDefault();
+            if (selectedTeamIndex > 0) setSelectedTeamIndex(selectedTeamIndex - 1);
+            break;
+            case "Enter":
+            removeFromTeam(team[selectedTeamIndex]);
+            break;
+            default:
+            break;
+        }
+        }
+    },
+    [selectedIndex, paginatedPokemons, user, focusArea, team, selectedTeamIndex]
+    );
+
+    useEffect(() => {
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [handleKeyDown]);
+
+    const selectedPokemon = paginatedPokemons[selectedIndex];
 
     const LoadingScreen = () => (
         <div
@@ -110,17 +246,58 @@ function Pokedex({ user, setUser }) {
     if (loading) return <LoadingScreen />;
 
     return (
-        <div style={{ display: "flex", minHeight: "100vh", background: "#222", fontFamily: "monospace" }}>
+        <div style={{
+        display: "flex",
+        minHeight: "100vh",
+        background: "#222",
+        fontFamily: "monospace"
+        }}>
         {/* Panel Izquierdo */}
-        <div style={{ width: 120, background: "#b71c1c", color: "#fff", display: "flex", flexDirection: "column", alignItems: "center", padding: "16px 0", borderTopRightRadius: 16, borderBottomRightRadius: 16, boxShadow: "2px 0 8px #0008" }}>
-            <div style={{ fontWeight: "bold", fontSize: 22, marginBottom: 24, letterSpacing: 2 }}>Pokédex</div>
-            <div style={{ background: "#fff2", borderRadius: 8, padding: "8px 0", width: "80%", marginBottom: 24, textAlign: "center" }}>
+        <div style={{
+            width: 220,
+            background: "#b71c1c",
+            color: "#fff",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            padding: "16px 0",
+            borderTopRightRadius: 16,
+            borderBottomRightRadius: 16,
+            boxShadow: "2px 0 8px #0008"
+        }}>
+            <div style={{
+            fontWeight: "bold",
+            fontSize: 22,
+            marginBottom: 24,
+            letterSpacing: 2
+            }}>Pokédex</div>
+            <div style={{
+            background: "#fff2",
+            borderRadius: 8,
+            padding: "8px 0",
+            width: "80%",
+            marginBottom: 24,
+            textAlign: "center"
+            }}>
             <div style={{ marginBottom: 8 }}>Equipo</div>
-            {team.map(pokemon => (
+            {team.map((pokemon, idx) => (
                 <div
                 key={pokemon.name}
-                style={{ margin: "4px 0", background: "#fff3", borderRadius: 6, padding: 2, cursor: "pointer" }}
+                style={{
+                    margin: "4px 0",
+                    background: focusArea === "team" && selectedTeamIndex === idx ? "#ffcb05" : "#fff3",
+                    borderRadius: 6,
+                    padding: 2,
+                    cursor: "pointer",
+                    color: focusArea === "team" && selectedTeamIndex === idx ? "#222" : undefined,
+                    fontWeight: focusArea === "team" && selectedTeamIndex === idx ? "bold" : undefined,
+                    outline: focusArea === "team" && selectedTeamIndex === idx ? "2px solid #ffcb05" : "none"
+                }}
                 onClick={() => removeFromTeam(pokemon)}
+                onMouseEnter={() => {
+                    setFocusArea("team");
+                    setSelectedTeamIndex(idx);
+                }}
                 title="Quitar del equipo"
                 >
                 <img src={pokemon.image} alt={pokemon.name} style={{ width: 32, display: "block", margin: "0 auto" }} />
@@ -131,26 +308,65 @@ function Pokedex({ user, setUser }) {
                 <div style={{ color: "#fff8", fontSize: "0.9rem" }}>Vacío</div>
             )}
             </div>
+            {/* Detalle del Pokémon seleccionado */}
+            {selectedPokemon && (
+            <div style={{
+                background: "#fff2",
+                borderRadius: 8,
+                padding: "12px 0",
+                width: "80%",
+                marginBottom: 24,
+                textAlign: "center",
+                boxShadow: "0 2px 8px #0003"
+            }}>
+                <div style={{ fontWeight: "bold", color: "#222", marginBottom: 4 }}>
+                #{selectedPokemon.id || (pokemonList.findIndex(p => p.name === selectedPokemon.name) + 1)}
+                </div>
+                <img src={selectedPokemon.image} alt={selectedPokemon.name} style={{ width: 48, marginBottom: 4 }} />
+                <div style={{ color: "#222", fontSize: "1rem" }}>{selectedPokemon.name}</div>
+            </div>
+            )}
             <button
             onClick={() => {
                 setUser(null);
                 setTeam([]);
                 localStorage.removeItem("user");
-                navigate("/login");
             }}
-            style={{ marginTop: "auto", background: "#fff2", color: "#fff", border: "none", borderRadius: 8, padding: "8px 12px", cursor: "pointer", fontWeight: "bold" }}
+            style={{
+                marginTop: "auto",
+                background: "#fff2",
+                color: "#fff",
+                border: "none",
+                borderRadius: 8,
+                padding: "8px 12px",
+                cursor: "pointer",
+                fontWeight: "bold"
+            }}
             >
             Cerrar sesión
             </button>
         </div>
 
         {/* Panel Central */}
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", padding: "32px 0" }}>
-            <div style={{ background: "#444", borderRadius: 24, boxShadow: "0 4px 24px #0008", padding: 36, minWidth: 1200, minHeight: 800 }}>
+        <div style={{
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            padding: "32px 0"
+        }}>
+            <div style={{
+            background: "#444",
+            borderRadius: 24,
+            boxShadow: "0 4px 24px #0008",
+            padding: 36,
+            minWidth: 1200,
+            minHeight: 800
+            }}>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 32 }}>
                 <div>
                 <span style={{ color: "#ffcb05", fontWeight: "bold", fontSize: 32 }}>Pokédex</span>
-                <span style={{ color: "#fff", marginLeft: 24, fontSize: 20 }}>Holab, {user}</span>
+                <span style={{ color: "#fff", marginLeft: 24, fontSize: 20 }}>Hola, {user}</span>
                 </div>
                 <div style={{ display: "flex", gap: 24 }}>
                 <button
@@ -162,7 +378,9 @@ function Pokedex({ user, setUser }) {
                 <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} style={{ borderRadius: 12, padding: 8, fontSize: 16 }}>
                     <option value="">Todos los tipos</option>
                     {allTypes.map(type => (
-                    <option key={type} value={type}>{type}</option>
+                    <option key={type} value={type}>
+                        {TYPE_TRANSLATIONS[type] || type}
+                    </option>
                     ))}
                 </select>
                 <select value={generationFilter} onChange={e => setGenerationFilter(e.target.value)} style={{ borderRadius: 12, padding: 8, fontSize: 16 }}>
@@ -173,17 +391,24 @@ function Pokedex({ user, setUser }) {
                 </select>
                 </div>
             </div>
-
             {/* Cuadrícula de Pokémon */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(10, 90px)", gridGap: "18px", background: "#888", borderRadius: 18, padding: 24, justifyContent: "center" }}>
-                {paginatedPokemons.map(pokemon => (
+            <div style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(10, 90px)",
+                gridGap: "18px",
+                background: "#888",
+                borderRadius: 18,
+                padding: 24,
+                justifyContent: "center"
+            }}>
+                {paginatedPokemons.map((pokemon, idx) => (
                 <div
                     key={pokemon.name}
                     style={{
                     width: 90,
                     height: 90,
                     background: "#222",
-                    border: "3px solid #555",
+                    border: focusArea === "grid" && selectedIndex === idx ? "3px solid #ffcb05" : "3px solid #555",
                     borderRadius: 12,
                     display: "flex",
                     flexDirection: "column",
@@ -191,17 +416,20 @@ function Pokedex({ user, setUser }) {
                     justifyContent: "center",
                     cursor: team.length < 6 ? "pointer" : "not-allowed",
                     opacity: team.length >= 6 ? 0.5 : 1,
-                    transition: "box-shadow 0.2s",
-                    boxShadow: "0 2px 8px #0004"
+                    transition: "box-shadow 0.2s, border 0.2s",
+                    boxShadow: focusArea === "grid" && selectedIndex === idx ? "0 0 16px #ffcb0588" : "0 2px 8px #0004"
                     }}
                     onClick={() => addToTeam(pokemon)}
+                    onMouseEnter={() => {
+                    setFocusArea("grid");
+                    setSelectedIndex(idx);
+                    }}
                     title={team.length < 6 ? "Añadir al equipo" : "Equipo lleno"}
                 >
                     <img src={pokemon.image} alt={pokemon.name} style={{ width: 48, filter: "drop-shadow(0 0 2px #0008)" }} />
                 </div>
                 ))}
             </div>
-
             {/* Paginación */}
             <div style={{ display: "flex", justifyContent: "center", marginTop: 24, gap: 16 }}>
                 <button
@@ -218,9 +446,7 @@ function Pokedex({ user, setUser }) {
                     cursor: page === 1 ? "not-allowed" : "pointer",
                     opacity: page === 1 ? 0.5 : 1
                 }}
-                >
-                Anterior
-                </button>
+                >Anterior</button>
                 <span style={{ color: "#fff", fontSize: 18, alignSelf: "center" }}>
                 Página {page} de {totalPages}
                 </span>
@@ -238,14 +464,11 @@ function Pokedex({ user, setUser }) {
                     cursor: page === totalPages ? "not-allowed" : "pointer",
                     opacity: page === totalPages ? 0.5 : 1
                 }}
-                >
-                Siguiente
-                </button>
+                >Siguiente</button>
             </div>
             </div>
         </div>
-
-        {/* Panel Derecho vacío (si se quiere usar más adelante) */}
+        {/* Panel Derecho (opcional) */}
         <div style={{ width: 60 }}></div>
         </div>
     );

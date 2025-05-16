@@ -7,8 +7,8 @@ router = APIRouter()
 @router.get("/")
 def get_pokemons():
     pokemons = []
-    res = requests.get("https://pokeapi.co/api/v2/pokemon-species?limit=60")
-    species_list = res.json()["results"]
+    res = requests.get("https://pokeapi.co/api/v2/pokemon-species?limit=60 ")
+    species_list = res.json()["results"]  # Aquí obtenemos la lista real
 
     for species in species_list:
         species_data = requests.get(species["url"]).json()
@@ -21,6 +21,7 @@ def get_pokemons():
             pokemon_data = pokemon_res.json()
             print(pokemon_data)
             types = [t["type"]["name"] for t in pokemon_data["types"]]
+            stats = {stat['stat']['name']: stat['base_stat'] for stat in pokemon_data['stats']}
             generation = species_data["generation"]["name"]
             stats = {stat['stat']['name']: stat['base_stat'] for stat in pokemon_data['stats']}
             moves = pokemon_data.get("moves", [])
