@@ -16,6 +16,28 @@ function App() {
   const [typeFilter, setTypeFilter] = useState("");
   const [generationFilter, setGenerationFilter] = useState("");
 
+  // Traduccion de tipos
+  const TYPE_TRANSLATIONS = {
+    normal: "Normal",
+    fire: "Fuego",
+    water: "Agua",
+    electric: "Eléctrico",
+    grass: "Planta",
+    ice: "Hielo",
+    fighting: "Lucha",
+    poison: "Veneno",
+    ground: "Tierra",
+    flying: "Volador",
+    psychic: "Psíquico",
+    bug: "Bicho",
+    rock: "Roca",
+    ghost: "Fantasma",
+    dragon: "Dragón",
+    dark: "Siniestro",
+    steel: "Acero",
+    fairy: "Hada"
+  };
+
   // Paginación
   const [page, setPage] = useState(1);
   const pageSize = 60;
@@ -98,76 +120,75 @@ function App() {
 
   // Manejo de teclado para mover el selector y alternar entre grid/equipo
   const handleKeyDown = useCallback(
-    (e) => {
-      if (!user) return;
+  (e) => {
+    if (!user) return;
 
-      // Cambiar foco con Tab
-      if (e.key === "Tab") {
-        e.preventDefault();
-        if (focusArea === "grid" && team.length > 0) {
-          setFocusArea("team");
-          setSelectedTeamIndex(0);
-        } else {
-          setFocusArea("grid");
-        }
-        return;
+    // Cambiar foco con Tab
+    if (e.key === "Tab") {
+      e.preventDefault();
+      if (focusArea === "grid" && team.length > 0) {
+        setFocusArea("team");
+        setSelectedTeamIndex(0);
+      } else {
+        setFocusArea("grid");
       }
+      return;
+    }
 
-      // --- Selector en cuadrícula principal ---
-      if (focusArea === "grid" && paginatedPokemons.length > 0) {
-        const cols = 10;
-        const rows = Math.ceil(pageSize / cols);
-        let row = Math.floor(selectedIndex / cols);
-        let col = selectedIndex % cols;
+    // --- Selector en cuadrícula principal ---
+    if (focusArea === "grid" && paginatedPokemons.length > 0) {
+      const cols = 10;
+      const rows = Math.ceil(pageSize / cols);
+      let row = Math.floor(selectedIndex / cols);
+      let col = selectedIndex % cols;
 
-        if (
-          e.key === "ArrowRight" ||
-          e.key === "ArrowLeft" ||
-          e.key === "ArrowDown" ||
-          e.key === "ArrowUp"
-        ) {
+      switch (e.key) {
+        case "ArrowRight":
           e.preventDefault();
-        }
-
-        if (e.key === "ArrowRight") {
           if (col < cols - 1 && selectedIndex + 1 < paginatedPokemons.length) setSelectedIndex(selectedIndex + 1);
-        }
-        if (e.key === "ArrowLeft") {
+          break;
+        case "ArrowLeft":
+          e.preventDefault();
           if (col > 0) setSelectedIndex(selectedIndex - 1);
-        }
-        if (e.key === "ArrowDown") {
+          break;
+        case "ArrowDown":
+          e.preventDefault();
           if (row < rows - 1 && selectedIndex + cols < paginatedPokemons.length) setSelectedIndex(selectedIndex + cols);
-        }
-        if (e.key === "ArrowUp") {
+          break;
+        case "ArrowUp":
+          e.preventDefault();
           if (row > 0) setSelectedIndex(selectedIndex - cols);
-        }
-        if (e.key === "Enter") {
+          break;
+        case "Enter":
           const selected = paginatedPokemons[selectedIndex];
           if (selected) addToTeam(selected);
-        }
+          break;
+        default:
+          break;
       }
+    }
 
-      // --- Selector en equipo ---
-      if (focusArea === "team" && team.length > 0) {
-        if (
-          e.key === "ArrowDown" ||
-          e.key === "ArrowUp"
-        ) {
+    // --- Selector en equipo ---
+    if (focusArea === "team" && team.length > 0) {
+      switch (e.key) {
+        case "ArrowDown":
           e.preventDefault();
-        }
-        if (e.key === "ArrowDown") {
           if (selectedTeamIndex < team.length - 1) setSelectedTeamIndex(selectedTeamIndex + 1);
-        }
-        if (e.key === "ArrowUp") {
+          break;
+        case "ArrowUp":
+          e.preventDefault();
           if (selectedTeamIndex > 0) setSelectedTeamIndex(selectedTeamIndex - 1);
-        }
-        if (e.key === "Enter") {
+          break;
+        case "Enter":
           removeFromTeam(team[selectedTeamIndex]);
-        }
+          break;
+        default:
+          break;
       }
-    },
-    [selectedIndex, paginatedPokemons, user, focusArea, team, selectedTeamIndex]
-  );
+    }
+  },
+  [selectedIndex, paginatedPokemons, user, focusArea, team, selectedTeamIndex]
+);
 
   useEffect(() => {
     window.addEventListener("keydown", handleKeyDown);
@@ -372,7 +393,9 @@ function App() {
               <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} style={{ borderRadius: 12, padding: 8, fontSize: 16 }}>
                 <option value="">Todos los tipos</option>
                 {allTypes.map(type => (
-                  <option key={type} value={type}>{type}</option>
+                  <option key={type} value={type}>
+                    {TYPE_TRANSLATIONS[type] || type}
+                  </option>
                 ))}
               </select>
               <select value={generationFilter} onChange={e => setGenerationFilter(e.target.value)} style={{ borderRadius: 12, padding: 8, fontSize: 16 }}>

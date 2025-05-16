@@ -19,13 +19,15 @@ def get_pokemons():
             pokemon_data = pokemon_res.json()
 
             types = [t["type"]["name"] for t in pokemon_data["types"]]
+            stats = {stat['stat']['name']: stat['base_stat'] for stat in pokemon_data['stats']}
             generation = species_data["generation"]["name"]
 
             pokemons.append({
                 "name": pokemon_data["name"],
                 "image": pokemon_data["sprites"]["front_default"],
                 "types": types,
-                "generation": generation
+                "generation": generation,
+                "stats": stats
             })
 
     return {"pokemons": pokemons}
