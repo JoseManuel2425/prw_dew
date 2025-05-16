@@ -271,6 +271,26 @@ function Pokedex({ user, setUser }) {
             marginBottom: 24,
             letterSpacing: 2
             }}>Pokédex</div>
+            {/* Botón cerrar sesión arriba */}
+            <button
+                onClick={() => {
+                    setUser(null);
+                    setTeam([]);
+                    localStorage.removeItem("user");
+                }}
+                style={{
+                    marginBottom: 24,
+                    background: "#fff2",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: 8,
+                    padding: "8px 12px",
+                    cursor: "pointer",
+                    fontWeight: "bold"
+                }}
+            >
+                Cerrar sesión
+            </button>
             <div style={{
             background: "#fff2",
             borderRadius: 8,
@@ -326,25 +346,7 @@ function Pokedex({ user, setUser }) {
                 <div style={{ color: "#222", fontSize: "1rem" }}>{selectedPokemon.name}</div>
             </div>
             )}
-            <button
-            onClick={() => {
-                setUser(null);
-                setTeam([]);
-                localStorage.removeItem("user");
-            }}
-            style={{
-                marginTop: "auto",
-                background: "#fff2",
-                color: "#fff",
-                border: "none",
-                borderRadius: 8,
-                padding: "8px 12px",
-                cursor: "pointer",
-                fontWeight: "bold"
-            }}
-            >
-            Cerrar sesión
-            </button>
+            {/* Botón de cerrar sesión eliminado de la parte inferior */}
         </div>
 
         {/* Panel Central */}

@@ -1,66 +1,62 @@
 import requests
 import random
 from fastapi import APIRouter
+from concurrent.futures import ThreadPoolExecutor
 
 router = APIRouter()
+# Reutilizamos una sesión para mantener conexiones HTTP
+session = requests.Session()
 
 @router.get("/")
 def get_pokemons():
     pokemons = []
-    res = requests.get("https://pokeapi.co/api/v2/pokemon-species?limit=60 ")
-    species_list = res.json()["results"]  # Aquí obtenemos la lista real
+    # Llamada inicial para obtener especies
+    res = session.get("https://pokeapi.co/api/v2/pokemon-species?limit=386")
+    res.raise_for_status()
+    species_list = res.json()["results"]
 
-    for species in species_list:
-        species_data = requests.get(species["url"]).json()
+    def fetch_data(species):
+        try:
+            sd = session.get(species["url"]).json()
+            if sd.get("evolves_from_species") is not None:
+                return None
 
-        if species_data["evolves_from_species"] is None:
-            # Usar nombre en lugar de id para asegurar el endpoint correcto
-            pokemon_res = requests.get(f"https://pokeapi.co/api/v2/pokemon/{species_data['name']}")
-            if pokemon_res.status_code != 200:
-                continue
-            pokemon_data = pokemon_res.json()
+            pr = session.get(f"https://pokeapi.co/api/v2/pokemon/{sd['name']}")
+            if pr.status_code != 200:
+                return None
 
-            types = [t["type"]["name"] for t in pokemon_data["types"]]
-            stats = {stat['stat']['name']: stat['base_stat'] for stat in pokemon_data['stats']}
-            generation = species_data["generation"]["name"]
-            stats = {stat['stat']['name']: stat['base_stat'] for stat in pokemon_data['stats']}
-            moves = pokemon_data.get("moves", [])
+            pd = pr.json()
+            return {
+                "name": pd["name"],
+                "image": pd["sprites"]["front_default"],
+                "types": [t["type"]["name"] for t in pd["types"]],
+                "stats": {st["stat"]["name"]: st["base_stat"] for st in pd["stats"]},
+                "generation": sd["generation"]["name"],
+                "moves": pd.get("moves", [])
+            }
+        except Exception:
+            return None
 
-            pokemons.append({
-                "name": pokemon_data["name"],
-                "image": pokemon_data["sprites"]["front_default"],
-                "types": types,
-                "stats": stats,
-                "generation": generation,
-                "moves": moves
-            })
+    # Paralelizamos con un pool de threads
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        results = executor.map(fetch_data, species_list)
 
+    pokemons = [p for p in results if p]
     return {"pokemons": pokemons}
-
 
 @router.get("/random-pokemon")
 def get_random_pokemon():
     random_id = random.randint(1, 1025)
-
-    pokemon_res = requests.get(f"https://pokeapi.co/api/v2/pokemon/{random_id}")
+    pokemon_res = session.get(f"https://pokeapi.co/api/v2/pokemon/{random_id}")
     if pokemon_res.status_code != 200:
         return {"error": "Pokémon no encontrado"}
 
     pokemon_data = pokemon_res.json()
-
-    # Extraemos los datos que quieres enviar:
-    name = pokemon_data["name"]
-    sprite = pokemon_data["sprites"]["front_default"]
-    types = [t["type"]["name"] for t in pokemon_data["types"]]
-    stats = {stat['stat']['name']: stat['base_stat'] for stat in pokemon_data['stats']}
-    moves = pokemon_data.get("moves", [])
-
     pokemon = {
-        "name": name,
-        "image": sprite,
-        "types": types,
-        "stats": stats,
-        "moves": moves,
+        "name": pokemon_data["name"],
+        "image": pokemon_data["sprites"]["front_default"],
+        "types": [t["type"]["name"] for t in pokemon_data["types"]],
+        "stats": {st["stat"]["name"]: st["base_stat"] for st in pokemon_data["stats"]},
+        "moves": pokemon_data.get("moves", []),
     }
-
     return {"pokemon": pokemon}
