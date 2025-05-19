@@ -32,6 +32,53 @@ function Combat() {
   const team = location.state?.team || [];
   const [randomPokemon, setRandomPokemon] = useState(null);
   const [wildPokemonHP, setWildPokemonHP] = useState(null);
+  const [playerPokemonHP, setPlayerPokemonHP] = useState(null);
+  const [activePokemonIndex, setActivePokemonIndex] = useState(0);
+  const [teamHP, setTeamHP] = useState([]);
+  const [showTeamSelection, setShowTeamSelection] = useState(false);
+
+  useEffect(() => {
+    if (team.length > 0) {
+      const level = 5;
+      const newTeam = [...team];
+      const newTeamHP = [];
+
+      newTeam.forEach(pokemon => {
+        const IVs = {
+          hp: Math.floor(Math.random() * 32),
+          attack: Math.floor(Math.random() * 32),
+          defense: Math.floor(Math.random() * 32),
+          "special-attack": Math.floor(Math.random() * 32),
+          "special-defense": Math.floor(Math.random() * 32),
+          speed: Math.floor(Math.random() * 32),
+        };
+        pokemon.IVs = IVs;
+        pokemon.level = level;
+        pokemon.stats = calculateActualStats(pokemon.stats, level, IVs);
+        newTeamHP.push(pokemon.stats.hp);
+      });
+
+      setTeamHP(newTeamHP);
+    }
+  }, [team]);
+
+  const applyDamageToPlayer = (damage) => {
+    setTeamHP(prevHPs => {
+      const newHPs = [...prevHPs];
+      newHPs[activePokemonIndex] = Math.max(newHPs[activePokemonIndex] - damage, 0);
+
+      if (newHPs[activePokemonIndex] <= 0) {
+        const allFainted = newHPs.every(hp => hp <= 0);
+        if (!allFainted) {
+          setShowTeamSelection(true); // Obliga a elegir un nuevo Pokémon
+        } else {
+          console.log("Todos los Pokémon del jugador han sido derrotados");
+        }
+      }
+
+      return newHPs;
+    });
+  };
 
   const generateRandomPokemon = () => {
     fetch("http://localhost:8000/random-pokemon")
@@ -89,7 +136,7 @@ function Combat() {
   async function fightWildPokemon(moveName, yourPokemon) {
     if (!randomPokemon) return; // Por seguridad, que haya pokemon salvaje
 
-    console.log(`¡${yourPokemon.name} usó ${moveName} contra ${randomPokemon.name}!`);
+    // console.log(`¡${yourPokemon.name} usó ${moveName} contra ${randomPokemon.name}!`);
 
     yourPokemon.IVs = {
             hp: Math.floor(Math.random() * 32),
@@ -125,12 +172,12 @@ function Combat() {
     console.log(atk, def);
     if(power != 0) {
       damage = 0.01 * stab * effectiveness * randomNumber *
-        ((((0.2 * 5 + 1) * atk * power) / (25 * def)) + 2);
+        ((((0.2 * level + 1) * atk * power) / (25 * def)) + 2);
     }
 
     console.log(`→ Tipo del ataque: ${type}`);
     console.log(`→ Categoría del ataque: ${atkCat}`);
-    console.log(`→ IV Pokemon (special-attack): ${yourPokemon.IVs["special-attack"]}`);
+    console.log(`→ IV Pokemon: ${yourPokemon.IVs}`);
     console.log(`→ Efectividad: x${effectiveness}`);
     console.log(`→ Daño calculado: ${Math.round(damage)}`);
 
@@ -146,84 +193,267 @@ function Combat() {
     return damage;
   }
 
+  async function wildAttack(playerPokemon) {
+    if (!randomPokemon || !playerPokemon) return;
+
+    const move = getMovesBeforeLevel(randomPokemon.moves, 5)[0]; // usa el primer movimiento disponible
+    if (!move) return;
+
+    const moveRes = await fetch(`http://localhost:8000/move/${move}`);
+    const moveData = await moveRes.json();
+
+    const power = moveData.power || 0;
+    const type = moveData.type;
+    const damageType = moveData.damage_class || "physical";
+
+    const effectiveness = await fetchEffectiveness(type, playerPokemon.types || []);
+
+    const level = randomPokemon.level || 5;
+    const atkCat = damageType === 'special' ? 'special-attack' : 'attack';
+    const defCat = damageType === 'special' ? 'special-defense' : 'defense';
+
+    const atk = randomPokemon.stats[atkCat];
+    const def = playerPokemon.stats[defCat];
+
+    const stab = randomPokemon.types.includes(type) ? 1.5 : 1;
+    const randomNumber = Math.floor(Math.random() * (100 - 85 + 1)) + 85;
+
+    let damage = 0;
+    if (power !== 0) {
+      damage = 0.01 * stab * effectiveness * randomNumber *
+        ((((0.2 * level + 1) * atk * power) / (25 * def)) + 2);
+    }
+
+    console.log(`El Pokémon salvaje usó ${move}`);
+    console.log(`→ Daño infligido al jugador: ${Math.round(damage)}`);
+
+    applyDamageToPlayer(Math.round(damage));
+  }
+
+  async function handleTurn(moveName, playerPokemon) {
+    if (!randomPokemon || !playerPokemon || !randomPokemon.stats || !playerPokemon.stats) return;
+
+    if (teamHP[activePokemonIndex] <= 0) {
+      console.log("Tu Pokémon actual está debilitado. Debes elegir otro.");
+      return;
+    }
+
+    const playerSpeed = playerPokemon.stats.speed;
+    const wildSpeed = randomPokemon.stats.speed;
+    console.log(`Velocidad del jugador: ${playerSpeed}`);
+    console.log(`Velocidad del Pokémon salvaje: ${wildSpeed}`);
+
+    if (playerSpeed >= wildSpeed) {
+      const damageToWild = await fightWildPokemon(moveName, playerPokemon);
+
+      // Obtenemos el HP actualizado del Pokémon salvaje
+      const updatedWildHP = wildPokemonHP - Math.round(damageToWild);
+      if (updatedWildHP > 0) {
+        await wildAttack(playerPokemon);
+      }
+
+    } else {
+      await wildAttack(playerPokemon);
+
+      // Comprobamos si el Pokémon del jugador sigue vivo después del ataque
+      const updatedPlayerHP = teamHP[activePokemonIndex];
+      if (updatedPlayerHP > 0) {
+        await fightWildPokemon(moveName, playerPokemon);
+      }
+    }
+  }
+  
   const movesBeforeLevel5 = randomPokemon ? getMovesBeforeLevel(randomPokemon.moves, 5) : [];
 
-  return (
-    <div style={{ textAlign: 'center' }}>
-      <h2>¡Combate Pokémon!</h2>
+  React.useEffect(() => {
+    if (teamHP.length === team.length && teamHP.length > 0) {
+      const allFainted = teamHP.every(hp => hp <= 0);
+      if (allFainted) {
+        setTimeout(() => {
+          navigate('/');
+        }, 2000); // Espera 2 segundos antes de redirigir
+      }
+    }
+  }, [teamHP, team.length, navigate]);
 
-      {team.length === 0 ? (
-        <p>No has seleccionado ningún Pokémon aún.</p>
+  return (
+    <div style={{
+      textAlign: 'center',
+      maxWidth: '900px',
+      margin: '20px auto',
+      fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+      color: '#333',
+      backgroundColor: '#f5f7fa',
+      padding: '20px',
+      borderRadius: '12px',
+      boxShadow: '0 4px 10px rgba(0,0,0,0.1)'
+    }}>
+      <h2 style={{ color: '#2c3e50', marginBottom: '25px' }}>¡Combate Pokémon!</h2>
+
+      {!showTeamSelection ? (
+        <div style={{
+          border: "1px solid #ccc",
+          padding: "15px",
+          borderRadius: "12px",
+          width: "220px",
+          margin: "0 auto 20px auto",
+          backgroundColor: 'white',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
+        }}>
+          <img
+            src={team[activePokemonIndex].image}
+            alt={team[activePokemonIndex].name}
+            style={{ width: '100px', marginBottom: '10px' }}
+          />
+          <p style={{ fontWeight: '700', fontSize: '20px', margin: '5px 0' }}>
+            {team[activePokemonIndex].name}
+          </p>
+          <p style={{ fontWeight: '600', margin: '5px 0', color: '#27ae60' }}>
+            HP: {teamHP[activePokemonIndex]} / {team[activePokemonIndex].stats?.hp || '??'}
+          </p>
+
+          <h4 style={{ marginTop: '20px', marginBottom: '10px', color: '#34495e' }}>
+            Movimientos aprendidos antes del nivel 5:
+          </h4>
+          <div style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            justifyContent: 'center',
+            gap: '10px',
+            marginBottom: '20px'
+          }}>
+            {getMovesBeforeLevel(team[activePokemonIndex].moves, 5).map(move => (
+              <button
+                key={move}
+                style={{
+                  padding: '8px 14px',
+                  borderRadius: '20px',
+                  border: 'none',
+                  backgroundColor: '#3498db',
+                  color: 'white',
+                  cursor: 'pointer',
+                  fontWeight: '600',
+                  fontSize: '14px',
+                  boxShadow: '0 2px 6px rgba(52, 152, 219, 0.4)',
+                  transition: 'background-color 0.3s',
+                }}
+                onMouseEnter={e => e.currentTarget.style.backgroundColor = '#2980b9'}
+                onMouseLeave={e => e.currentTarget.style.backgroundColor = '#3498db'}
+                onClick={async () => {
+                  await handleTurn(move, team[activePokemonIndex]);
+                }}
+              >
+                {move}
+              </button>
+            ))}
+          </div>
+
+          <button
+            onClick={() => setShowTeamSelection(true)}
+            style={{
+              padding: '10px 25px',
+              borderRadius: '25px',
+              border: 'none',
+              backgroundColor: '#e67e22',
+              color: 'white',
+              fontWeight: '700',
+              cursor: 'pointer',
+              fontSize: '16px',
+              boxShadow: '0 2px 8px rgba(230, 126, 34, 0.5)',
+              transition: 'background-color 0.3s',
+              display: 'block',
+              margin: '0 auto'
+            }}
+            onMouseEnter={e => e.currentTarget.style.backgroundColor = '#d35400'}
+            onMouseLeave={e => e.currentTarget.style.backgroundColor = '#e67e22'}
+          >
+            Cambio
+          </button>
+        </div>
       ) : (
-        <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: '16px' }}>
-          {team.map((pokemon) => {
-            const movesBeforeLevel5Team = pokemon.moves ? getMovesBeforeLevel(pokemon.moves, 5) : [];
+        <div style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          justifyContent: 'center',
+          gap: '15px',
+          marginBottom: '30px',
+        }}>
+          {team.map((pokemon, index) => {
+            if (index === activePokemonIndex || teamHP[index] <= 0) return null;
             return (
-              <div key={pokemon.name} style={{ border: "1px solid #ccc", padding: "10px", borderRadius: "8px", width: "180px" }}>
+              <div
+                key={pokemon.name}
+                style={{
+                  border: "1px solid #ccc",
+                  padding: "10px",
+                  borderRadius: "8px",
+                  width: "180px",
+                  cursor: "pointer",
+                  margin: "10px auto"
+                }}
+                onClick={async () => {
+                  setActivePokemonIndex(index);
+                  setShowTeamSelection(false);
+
+                  await new Promise(resolve => setTimeout(resolve, 50));
+                  const newPokemon = team[index];
+                  await wildAttack(newPokemon);
+                }}
+              >
                 <img src={pokemon.image} alt={pokemon.name} style={{ width: '80px' }} />
                 <p>{pokemon.name}</p>
-
-                {pokemon.stats && (
-                  <div>
-                    <h4>Stats:</h4>
-                    <ul style={{ listStyle: "none", padding: 0 }}>
-                      {Object.entries(pokemon.stats).map(([statName, value]) => (
-                        <li key={statName}>
-                          <strong>{statName.replace("-", " ")}:</strong> {value}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                <h4>Movimientos aprendidos antes del nivel 5:</h4>
-                <ul style={{ paddingLeft: 0 }}>
-                  {movesBeforeLevel5Team.length === 0 ? (
-                    <li>No tiene movimientos a nivel ≤ 5</li>
-                  ) : (
-                    movesBeforeLevel5Team.map(move => (
-                      <button
-                        key={move}
-                        style={{ margin: '4px' }}
-                        onClick={async () => {
-                          await fightWildPokemon(move, pokemon);
-                        }}
-                      >
-                        {move}
-                      </button>
-                    ))
-                  )}
-                </ul>
+                <p>HP: {teamHP[index]} / {pokemon.stats?.hp || '??'}</p>
               </div>
             );
           })}
+          
+          <button onClick={() => setShowTeamSelection(false)} style={{ marginTop: "20px" }}>
+            Volver
+          </button>
         </div>
       )}
 
       {randomPokemon && (
         <div style={{ marginTop: 40 }}>
-          <h3>Pokémon Aleatorio</h3>
-          <div style={{ border: "1px solid #ccc", padding: "10px", borderRadius: "8px", display: "inline-block" }}>
-            <img src={randomPokemon.image} alt={randomPokemon.name} style={{ width: '100px' }} />
-            <p style={{ fontWeight: 'bold', fontSize: 18 }}>{randomPokemon.name}</p>
-            <p>Tipos: {randomPokemon.types.join(', ')}</p>
-            <p>HP: {wildPokemonHP} / {randomPokemon.stats.hp}</p>
-            <h4>Movimientos aprendidos antes del nivel 5:</h4>
-            <ul style={{ paddingLeft: 0 }}>
+          <h3 style={{ color: '#c0392b', marginBottom: '15px' }}>Pokémon Aleatorio</h3>
+          <div style={{
+            border: "1px solid #ccc",
+            padding: "15px",
+            borderRadius: "12px",
+            display: "inline-block",
+            backgroundColor: 'white',
+            boxShadow: '0 2px 10px rgba(192, 57, 43, 0.2)'
+          }}>
+            <img src={randomPokemon.image} alt={randomPokemon.name} style={{ width: '120px', marginBottom: '10px' }} />
+            <p style={{ fontWeight: '700', fontSize: '22px', margin: '8px 0' }}>{randomPokemon.name}</p>
+            <p style={{ marginBottom: '8px', fontSize: '16px', color: '#7f8c8d' }}>
+              Tipos: {randomPokemon.types.join(', ')}
+            </p>
+            <p style={{ fontWeight: '600', color: '#c0392b', marginBottom: '15px', fontSize: '16px' }}>
+              HP: {wildPokemonHP} / {randomPokemon.stats.hp}
+            </p>
+            <h4 style={{ marginBottom: '10px', color: '#7f8c8d' }}>Movimientos aprendidos antes del nivel 5:</h4>
+            <ul style={{ paddingLeft: 0, listStyle: 'none', marginBottom: 0 }}>
               {movesBeforeLevel5.length === 0 ? (
-                <li>No tiene movimientos a nivel ≤ 5</li>
+                <li style={{ fontStyle: 'italic', color: '#999' }}>No tiene movimientos a nivel ≤ 5</li>
               ) : (
                 movesBeforeLevel5.map(move => (
-                  <button
+                  <li
                     key={move}
-                    style={{ margin: '4px' }}
-                    onClick={async () => {
-                      // Aquí puedes implementar que el Pokémon salvaje también ataque si quieres
-                      // Por ahora no hace nada
+                    style={{
+                      margin: '6px 0',
+                      padding: '6px 12px',
+                      backgroundColor: '#f0f3f5',
+                      borderRadius: '15px',
+                      display: 'inline-block',
+                      cursor: 'default',
+                      fontWeight: '600',
+                      color: '#34495e',
+                      userSelect: 'none'
                     }}
                   >
                     {move}
-                  </button>
+                  </li>
                 ))
               )}
             </ul>
