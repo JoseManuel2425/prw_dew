@@ -33,13 +33,38 @@ function App() {
     return storedUser ? JSON.parse(storedUser) : null;
   });
 
+  // Estado global para los pokemons y su carga
+  const [pokemonList, setPokemonList] = useState([]);
+  const [loadingPokemons, setLoadingPokemons] = useState(true);
+
+  useEffect(() => {
+    setLoadingPokemons(true);
+    fetch("http://localhost:8000/")
+      .then(res => res.json())
+      .then(data => {
+        setPokemonList(data?.pokemons || []);
+        setLoadingPokemons(false);
+      })
+      .catch(() => {
+        setPokemonList([]);
+        setLoadingPokemons(false);
+      });
+  }, []);
+
   return (
     <Router>
       <Routes>
         <Route path="/" element={user ? <Navigate to="/pokedex" /> : <Navigate to="/login" />} />
         <Route path="/login" element={user ? <Navigate to="/pokedex" /> : <LoginWrapper onLogin={setUser} />} />
         <Route path="/register" element={user ? <Navigate to="/pokedex" /> : <RegisterWrapper />} />
-        <Route path="/pokedex" element={user ? <Pokedex user={user} setUser={setUser} /> : <Navigate to="/login" />} />
+        <Route
+          path="/pokedex"
+          element={
+            user
+              ? <Pokedex user={user} setUser={setUser} pokemonList={pokemonList} loadingPokemons={loadingPokemons} />
+              : <Navigate to="/login" />
+          }
+        />
         <Route path="/combat" element={user ? <Combat /> : <Navigate to="/login" />} />
         {/* Ruta catch-all */}
         <Route path="*" element={<Navigate to="/" />} />
