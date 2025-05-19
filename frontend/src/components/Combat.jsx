@@ -195,6 +195,26 @@ function Combat() {
       const newHP = Math.max(prevHP - Math.round(damage), 0);
       if (newHP <= 0) {
         console.log(`${randomPokemon.name} ha sido derrotado!`);
+
+        // Subir de nivel al Pokémon del jugador
+        const updatedTeam = [...team];
+        const currentPokemon = { ...updatedTeam[activePokemonIndex] };
+
+        yourPokemon.level = currentPokemon.level += 1;
+        currentPokemon.stats = calculateActualStats(currentPokemon.stats, currentPokemon.level, currentPokemon.IVs);
+        updatedTeam[activePokemonIndex] = currentPokemon;
+
+        // Actualizar HP total (nuevo máximo) y mantener el HP actual (sin curarlo)
+        const newTeamHP = [...teamHP];
+        const previousHP = newTeamHP[activePokemonIndex];
+        const newMaxHP = currentPokemon.stats.hp;
+        newTeamHP[activePokemonIndex] = Math.min(previousHP, newMaxHP);
+
+        setPlayerPokemonHP(newTeamHP[activePokemonIndex]);
+        setTeamHP(newTeamHP);
+
+        addToCombatLog(`${currentPokemon.name} subió al nivel ${currentPokemon.level}!`);
+
         generateRandomPokemon();
       }
       return newHP;
@@ -335,7 +355,7 @@ function Combat() {
               </p>
 
               <h4 style={{ marginTop: '20px', marginBottom: '10px', color: '#34495e' }}>
-                Movimientos aprendidos antes del nivel 5:
+                Nivel: {team[activePokemonIndex].level}
               </h4>
               <div style={{
                 display: 'flex',
