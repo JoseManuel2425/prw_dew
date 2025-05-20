@@ -1,14 +1,22 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+function getResponsiveGrid() {
+    const width = window.innerWidth;
+    if (width <= 500) return { cols: 2, pageSize: 8 };
+    if (width <= 700) return { cols: 3, pageSize: 12 };
+    if (width <= 900) return { cols: 5, pageSize: 20 };
+    if (width <= 1200) return { cols: 7, pageSize: 35 };
+    return { cols: 10, pageSize: 60 };
+}
+
 function Pokedex({ user, setUser, pokemonList, loadingPokemons }) {
     const [team, setTeam] = useState([]);
     const [typeFilter, setTypeFilter] = useState("");
     const [generationFilter, setGenerationFilter] = useState("");
     const [page, setPage] = useState(1);
-    const pageSize = 60;
+    const [gridConfig, setGridConfig] = useState(getResponsiveGrid());
     const navigate = useNavigate();
-    const [showRegister, setShowRegister] = useState(false);
 
     // Traduccion de tipos
     const TYPE_TRANSLATIONS = {
@@ -37,6 +45,15 @@ function Pokedex({ user, setUser, pokemonList, loadingPokemons }) {
     const [focusArea, setFocusArea] = useState("grid"); // "grid" o "team"
     const [selectedTeamIndex, setSelectedTeamIndex] = useState(0);
 
+    // Responsive: actualizar columnas y pageSize al cambiar tamaño ventana
+    useEffect(() => {
+        function handleResize() {
+            setGridConfig(getResponsiveGrid());
+        }
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
     const allTypes = Array.from(new Set(pokemonList.flatMap(p => p.types || [])));
     const allGenerations = Array.from(new Set(pokemonList.map(p => p.generation))).sort();
 
@@ -58,15 +75,15 @@ function Pokedex({ user, setUser, pokemonList, loadingPokemons }) {
             (generationFilter === "" || p.generation === generationFilter)
     );
 
-    const totalPages = Math.ceil(filteredPokemons.length / pageSize);
-    const paginatedPokemons = filteredPokemons.slice((page - 1) * pageSize, page * pageSize);
+    const totalPages = Math.ceil(filteredPokemons.length / gridConfig.pageSize);
+    const paginatedPokemons = filteredPokemons.slice((page - 1) * gridConfig.pageSize, page * gridConfig.pageSize);
 
     // Si cambian los filtros, resetea selector y página
     useEffect(() => {
         setSelectedIndex(0);
         setPage(1);
         setFocusArea("grid");
-    }, [typeFilter, generationFilter]);
+    }, [typeFilter, generationFilter, gridConfig.pageSize]);
 
     // Si cambia la página, resetea el selector de cuadrícula
     useEffect(() => {
@@ -100,8 +117,8 @@ function Pokedex({ user, setUser, pokemonList, loadingPokemons }) {
 
             // --- Selector en cuadrícula principal ---
             if (focusArea === "grid" && paginatedPokemons.length > 0) {
-                const cols = 10;
-                const rows = Math.ceil(pageSize / cols);
+                const cols = gridConfig.cols;
+                const rows = Math.ceil(gridConfig.pageSize / cols);
                 let row = Math.floor(selectedIndex / cols);
                 let col = selectedIndex % cols;
 
@@ -150,7 +167,7 @@ function Pokedex({ user, setUser, pokemonList, loadingPokemons }) {
                 }
             }
         },
-        [selectedIndex, paginatedPokemons, user, focusArea, team, selectedTeamIndex]
+        [selectedIndex, paginatedPokemons, user, focusArea, team, selectedTeamIndex, gridConfig]
     );
 
     useEffect(() => {
@@ -217,14 +234,97 @@ function Pokedex({ user, setUser, pokemonList, loadingPokemons }) {
     if (loadingPokemons) return <LoadingScreen />;
 
     return (
-        <div style={{
+        <div className="pokedex-root" style={{
             display: "flex",
             minHeight: "100vh",
             background: "#222",
-            fontFamily: "monospace"
+            fontFamily: "monospace",
+            boxSizing: "border-box",
+            width: "100vw",
+            overflowX: "hidden"
         }}>
+            {/* Estilos responsivos */}
+            <style>
+                {`
+                .pokedex-main, .pokedex-grid {
+                    box-sizing: border-box;
+                }
+                @media (max-width: 900px) {
+                    .pokedex-root {
+                        flex-direction: column !important;
+                    }
+                    .pokedex-sidebar {
+                        width: 100% !important;
+                        border-radius: 0 0 16px 16px !important;
+                        flex-direction: column !important;
+                        justify-content: flex-start !important;
+                        align-items: stretch !important;
+                        padding: 12px 0 !important;
+                        min-height: unset !important;
+                        max-width: 100vw !important;
+                    }
+                    .pokedex-header {
+                        order: 1;
+                        text-align: center !important;
+                        margin-bottom: 12px !important;
+                        width: 100%;
+                    }
+                    .logout-btn {
+                        order: 2;
+                        display: block;
+                        margin: 0 auto 24px auto !important;
+                        width: auto !important;
+                        min-width: 120px;
+                        max-width: 200px;
+                        text-align: center;
+                    }
+                    .pokedex-selected { order: 3; }
+                    .pokedex-team {
+                        order: 4;
+                        width: 96% !important;
+                        margin: 16px auto 0 auto !important;
+                        display: flex !important;
+                        flex-direction: row !important;
+                        flex-wrap: wrap;
+                        justify-content: center;
+                        align-items: center;
+                        gap: 8px;
+                    }
+                    .pokedex-team > div {
+                        margin: 0 4px !important;
+                        min-width: 60px;
+                    }
+                }
+                @media (max-width: 700px) {
+                    .pokedex-main {
+                        min-width: 0 !important;
+                        width: 100% !important;
+                        padding: 8px !important;
+                        max-width: 100vw !important;
+                    }
+                    .pokedex-grid {
+                        grid-template-columns: repeat(3, 1fr) !important;
+                        padding: 8px !important;
+                        grid-gap: 8px !important;
+                    }
+                }
+                @media (max-width: 500px) {
+                    .pokedex-main {
+                        min-width: 0 !important;
+                        width: 100% !important;
+                        padding: 2px !important;
+                        max-width: 100vw !important;
+                    }
+                    .pokedex-grid {
+                        grid-template-columns: repeat(2, 1fr) !important;
+                        padding: 2px !important;
+                        grid-gap: 4px !important;
+                    }
+                }
+                `}
+            </style>
             {/* Panel Izquierdo */}
-            <div style={{
+            <div className="pokedex-sidebar" style={{
                 width: 220,
                 background: "#b71c1c",
                 color: "#fff",
@@ -234,16 +334,19 @@ function Pokedex({ user, setUser, pokemonList, loadingPokemons }) {
                 padding: "16px 0",
                 borderTopRightRadius: 16,
                 borderBottomRightRadius: 16,
-                boxShadow: "2px 0 8px #0008"
+                boxShadow: "2px 0 8px #0008",
+                minHeight: "100vh",
+                zIndex: 2
             }}>
-                <div style={{
+                <div className="pokedex-header" style={{
                     fontWeight: "bold",
                     fontSize: 22,
                     marginBottom: 24,
                     letterSpacing: 2
                 }}>Pokédex</div>
-                {/* Botón cerrar sesión arriba */}
+                {/* Botón cerrar sesión debajo del título */}
                 <button
+                    className="logout-btn"
                     onClick={() => {
                         setUser(null);
                         setTeam([]);
@@ -262,12 +365,31 @@ function Pokedex({ user, setUser, pokemonList, loadingPokemons }) {
                 >
                     Cerrar sesión
                 </button>
-                <div style={{
+                {/* Detalle del Pokémon seleccionado */}
+                {selectedPokemon && (
+                    <div className="pokedex-selected" style={{
+                        background: "#fff2",
+                        borderRadius: 8,
+                        padding: "12px 0",
+                        width: "80%",
+                        margin: "0 auto 24px auto",
+                        textAlign: "center",
+                        boxShadow: "0 2px 8px #0003"
+                    }}>
+                        <div style={{ fontWeight: "bold", color: "#222", marginBottom: 4 }}>
+                            #{selectedPokemon.id || (pokemonList.findIndex(p => p.name === selectedPokemon.name) + 1)}
+                        </div>
+                        <img src={selectedPokemon.image} alt={selectedPokemon.name} style={{ width: 48, marginBottom: 4 }} />
+                        <div style={{ color: "#222", fontSize: "1rem" }}>{selectedPokemon.name}</div>
+                    </div>
+                )}
+                {/* Equipo */}
+                <div className="pokedex-team" style={{
                     background: "#fff2",
                     borderRadius: 8,
                     padding: "8px 0",
                     width: "80%",
-                    marginBottom: 24,
+                    margin: "0 auto 24px auto",
                     textAlign: "center"
                 }}>
                     <div style={{ marginBottom: 8 }}>Equipo</div>
@@ -299,48 +421,36 @@ function Pokedex({ user, setUser, pokemonList, loadingPokemons }) {
                         <div style={{ color: "#fff8", fontSize: "0.9rem" }}>Vacío</div>
                     )}
                 </div>
-                {/* Detalle del Pokémon seleccionado */}
-                {selectedPokemon && (
-                    <div style={{
-                        background: "#fff2",
-                        borderRadius: 8,
-                        padding: "12px 0",
-                        width: "80%",
-                        marginBottom: 24,
-                        textAlign: "center",
-                        boxShadow: "0 2px 8px #0003"
-                    }}>
-                        <div style={{ fontWeight: "bold", color: "#222", marginBottom: 4 }}>
-                            #{selectedPokemon.id || (pokemonList.findIndex(p => p.name === selectedPokemon.name) + 1)}
-                        </div>
-                        <img src={selectedPokemon.image} alt={selectedPokemon.name} style={{ width: 48, marginBottom: 4 }} />
-                        <div style={{ color: "#222", fontSize: "1rem" }}>{selectedPokemon.name}</div>
-                    </div>
-                )}
             </div>
 
             {/* Panel Central */}
-            <div style={{
+            <div className="pokedex-main" style={{
                 flex: 1,
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
-                padding: "32px 0"
+                padding: "32px 0",
+                margin: "0 auto",
+                width: "100%",
+                maxWidth: "1400px",
+                boxSizing: "border-box",
+                zIndex: 1
             }}>
                 <div style={{
                     background: "#444",
                     borderRadius: 24,
                     boxShadow: "0 4px 24px #0008",
                     padding: 36,
-                    minWidth: 1200,
-                    minHeight: 800
+                    width: "100%",
+                    maxWidth: "1400px",
+                    boxSizing: "border-box"
                 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 32 }}>
+                    <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", marginBottom: 32 }}>
                         <div>
                             <span style={{ color: "#ffcb05", fontWeight: "bold", fontSize: 32 }}>Pokédex</span>
                             <span style={{ color: "#fff", marginLeft: 24, fontSize: 20 }}>Hola, {user}</span>
                         </div>
-                        <div style={{ display: "flex", gap: 24 }}>
+                        <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
                             <button
                                 onClick={() => navigate("/combat", { state: { team } })}
                                 style={{ background: "#ffcb05", border: "none", borderRadius: 12, padding: "12px 20px", fontWeight: "bold", cursor: "pointer" }}
@@ -364,14 +474,15 @@ function Pokedex({ user, setUser, pokemonList, loadingPokemons }) {
                         </div>
                     </div>
                     {/* Cuadrícula de Pokémon */}
-                    <div style={{
+                    <div className="pokedex-grid" style={{
                         display: "grid",
-                        gridTemplateColumns: "repeat(10, 90px)",
+                        gridTemplateColumns: `repeat(${gridConfig.cols}, 90px)`,
                         gridGap: "18px",
                         background: "#888",
                         borderRadius: 18,
                         padding: 24,
-                        justifyContent: "center"
+                        justifyContent: "center",
+                        boxSizing: "border-box"
                     }}>
                         {paginatedPokemons.map((pokemon, idx) => (
                             <div
@@ -403,7 +514,7 @@ function Pokedex({ user, setUser, pokemonList, loadingPokemons }) {
                         ))}
                     </div>
                     {/* Paginación */}
-                    <div style={{ display: "flex", justifyContent: "center", marginTop: 24, gap: 16 }}>
+                    <div style={{ display: "flex", justifyContent: "center", marginTop: 24, gap: 16, flexWrap: "wrap" }}>
                         <button
                             onClick={() => setPage(page - 1)}
                             disabled={page === 1}
@@ -441,7 +552,7 @@ function Pokedex({ user, setUser, pokemonList, loadingPokemons }) {
                 </div>
             </div>
             {/* Panel Derecho (opcional) */}
-            <div style={{ width: 60 }}></div>
+            <div style={{ width: 0, minWidth: 0 }}></div>
         </div>
     );
 }

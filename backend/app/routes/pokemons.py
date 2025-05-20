@@ -11,7 +11,7 @@ session = requests.Session()
 def get_pokemons():
     pokemons = []
     # Llamada inicial para obtener especies
-    res = session.get("https://pokeapi.co/api/v2/pokemon-species?limit=1025")
+    res = session.get("https://pokeapi.co/api/v2/pokemon-species?limit=300")
     res.raise_for_status()
     species_list = res.json()["results"]
 
