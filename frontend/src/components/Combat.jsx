@@ -29,7 +29,8 @@ function Combat() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const team = location.state?.team || [];
+  const initialTeam = location.state?.team || [];
+  const [team, setTeam] = useState(initialTeam);
   const [randomPokemon, setRandomPokemon] = useState(null);
   const [wildPokemonHP, setWildPokemonHP] = useState(null);
   const [playerPokemonHP, setPlayerPokemonHP] = useState(null);
@@ -38,6 +39,7 @@ function Combat() {
   const [showTeamSelection, setShowTeamSelection] = useState(false);
   const [isManualSwitch, setIsManualSwitch] = useState(false);
   const [combatLog, setCombatLog] = useState([]);
+  const [showItemSelection, setShowItemSelection] = useState(false);
 
   const addToCombatLog = (message) => {
     setCombatLog(prevLog => [...prevLog, message]);
@@ -61,13 +63,23 @@ function Combat() {
         };
         pokemon.IVs = IVs;
         pokemon.level = level;
-        pokemon.stats = calculateActualStats(pokemon.stats, level, IVs);
+
+        // GUARDA los stats base originales SOLO si no existen
+        if (!pokemon.baseStats) {
+          // Si el backend te da los stats base en otra propiedad, usa esa
+          // Por ejemplo: pokemon.baseStats = { ...pokemon.base_stats };
+          pokemon.baseStats = { ...pokemon.stats }; // <-- Aquí deben ser los stats base del backend
+        }
+
+        // Calcula los stats reales a partir de los base
+        pokemon.stats = calculateActualStats(pokemon.baseStats, level, IVs);
+
         newTeamHP.push(pokemon.stats.hp);
       });
 
       setTeamHP(newTeamHP);
     }
-  }, [team]);
+  }, []);
 
   const applyDamageToPlayer = (damage) => {
     setTeamHP(prevHPs => {
@@ -200,22 +212,41 @@ function Combat() {
         const updatedTeam = [...team];
         const currentPokemon = { ...updatedTeam[activePokemonIndex] };
 
-        yourPokemon.level = currentPokemon.level += 1;
-        currentPokemon.stats = calculateActualStats(currentPokemon.stats, currentPokemon.level, currentPokemon.IVs);
-        updatedTeam[activePokemonIndex] = currentPokemon;
+        const previousLevel = currentPokemon.level;
+        const newLevel = previousLevel + 1;
+
+        // baseStats ya debe existir y ser correcto
+        currentPokemon.level = newLevel;
+        currentPokemon.stats = calculateActualStats(
+          currentPokemon.baseStats,
+          newLevel,
+          currentPokemon.IVs
+        );
 
         // Actualizar HP total (nuevo máximo) y mantener el HP actual (sin curarlo)
         const newTeamHP = [...teamHP];
         const previousHP = newTeamHP[activePokemonIndex];
+
+        const previousMaxHP = calculateActualStats(
+          currentPokemon.baseStats,
+          previousLevel,
+          currentPokemon.IVs
+        ).hp;
+
         const newMaxHP = currentPokemon.stats.hp;
-        newTeamHP[activePokemonIndex] = Math.min(previousHP, newMaxHP);
+        const hpIncrement = newMaxHP - previousMaxHP;
+
+        newTeamHP[activePokemonIndex] = Math.min(previousHP + hpIncrement, newMaxHP);
 
         setPlayerPokemonHP(newTeamHP[activePokemonIndex]);
         setTeamHP(newTeamHP);
 
         addToCombatLog(`${currentPokemon.name} subió al nivel ${currentPokemon.level}!`);
 
-        generateRandomPokemon();
+        updatedTeam[activePokemonIndex] = currentPokemon;
+        setTeam(updatedTeam);
+
+        setShowItemSelection(true);
       }
       return newHP;
     });
@@ -226,7 +257,9 @@ function Combat() {
   async function wildAttack(playerPokemon) {
     if (!randomPokemon || !playerPokemon) return;
 
-    const move = getMovesBeforeLevel(randomPokemon.moves, 5)[0]; // usa el primer movimiento disponible
+    // usa un movimiento aleatorio entre los primeros 4 disponibles
+    const moveIndex = Math.floor(Math.random() * 4);
+    const move = getMovesBeforeLevel(randomPokemon.moves, 5)[moveIndex];
     if (!move) return;
 
     const moveRes = await fetch(`http://localhost:8000/move/${move}`);
@@ -314,6 +347,18 @@ function Combat() {
       }
     }
   }, [teamHP, team.length, navigate]);
+
+  const buttonStyle = {
+    padding: '10px 20px',
+    borderRadius: '10px',
+    border: 'none',
+    fontSize: '16px',
+    fontWeight: 'bold',
+    cursor: 'pointer',
+    backgroundColor: '#3498db',
+    color: 'white',
+    transition: 'background-color 0.3s',
+  };
 
   return (
     <div style={{
@@ -499,7 +544,7 @@ function Combat() {
                         {move}
                       </li>
                     ))
-                  )}
+          )}
                 </ul>
               </div>
             </div>
@@ -528,6 +573,64 @@ function Combat() {
             </ul>
           )}
         </div>
+        {showItemSelection && (
+          <div style={{
+            position: 'fixed',
+            top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 1000,
+          }}>
+            <div style={{
+              backgroundColor: '#fff',
+              padding: '30px',
+              borderRadius: '15px',
+              textAlign: 'center',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+            }}>
+              <h3>¡El Pokémon salvaje fue derrotado!</h3>
+              <p>¿Qué quieres hacer?</p>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '15px', marginTop: '20px' }}>
+                <button
+                  style={buttonStyle}
+                  onClick={() => {
+                    // Curar al Pokémon actual
+                    const newTeamHP = [...teamHP];
+                    const maxHP = team[activePokemonIndex].stats.hp;
+                    newTeamHP[activePokemonIndex] = maxHP;
+                    setTeamHP(newTeamHP);
+                    addToCombatLog(`${team[activePokemonIndex].name} ha sido curado al máximo.`);
+                    setShowItemSelection(false);
+                    generateRandomPokemon();
+                  }}
+                >
+                  🧪 Curar
+                </button>
+                <button
+                  style={buttonStyle}
+                  onClick={() => {
+                    addToCombatLog("¡Lanzaste una Pokéball! (aún no implementado)");
+                    setShowItemSelection(false);
+                    generateRandomPokemon();
+                  }}
+                >
+                  🎯 Pokéball
+                </button>
+                <button
+                  style={buttonStyle}
+                  onClick={() => {
+                    setShowItemSelection(false);
+                    generateRandomPokemon();
+                  }}
+                >
+                  ⚔️ Continuar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
