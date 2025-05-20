@@ -47,7 +47,7 @@ def get_pokemons():
 @router.get("/random-pokemon")
 def get_random_pokemon():
     random_id = random.randint(1, 1025)
-    pokemon_res = session.get(f"https://pokeapi.co/api/v2/pokemon/138")
+    pokemon_res = session.get(f"https://pokeapi.co/api/v2/pokemon/{random_id}")
     if pokemon_res.status_code != 200:
         return {"error": "Pokémon no encontrado"}
 
