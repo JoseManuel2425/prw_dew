@@ -43,7 +43,7 @@ function Register({ onRegister }) {
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        backgroundColor: "#f0f0f0",
+        background: "radial-gradient(circle at 50% 50%, #888 0%, #444 60%, #222 100%)",
       }}
     >
       <div
@@ -56,9 +56,9 @@ function Register({ onRegister }) {
           minWidth: "320px",
           maxWidth: "400px",
           width: "90%",
-          background: "#fff",
+          background: "#444",
           borderRadius: "16px",
-          boxShadow: "0 4px 24px #0002",
+          boxShadow: "0 4px 24px #0008",
           padding: "32px 28px",
           margin: "32px 0",
         }}
@@ -67,7 +67,7 @@ function Register({ onRegister }) {
           style={{
             marginBottom: 24,
             fontFamily: "monospace",
-            color: "#3b4cca",
+            color: "#ffcb05",
             fontWeight: 700,
           }}
         >
@@ -84,7 +84,10 @@ function Register({ onRegister }) {
             borderRadius: "8px",
             border: "1px solid #bbb",
             width: "100%",
-            fontSize: "1rem"
+            fontSize: "1rem",
+            background: "#222",
+            color: "#fff",
+            outline: "none"
           }}
         />
         <input
@@ -98,7 +101,10 @@ function Register({ onRegister }) {
             borderRadius: "8px",
             border: "1px solid #bbb",
             width: "100%",
-            fontSize: "1rem"
+            fontSize: "1rem",
+            background: "#222",
+            color: "#fff",
+            outline: "none"
           }}
         />
         <input
@@ -112,13 +118,16 @@ function Register({ onRegister }) {
             borderRadius: "8px",
             border: "1px solid #bbb",
             width: "100%",
-            fontSize: "1rem"
+            fontSize: "1rem",
+            background: "#222",
+            color: "#fff",
+            outline: "none"
           }}
         />
         <button
           onClick={handleRegister}
           style={{
-            background: "linear-gradient(90deg, #ffcb05 60%, #3b4cca 100%)",
+            background: "linear-gradient(90deg, #ffcb05 60%, #b71c1c 100%)",
             color: "#222",
             border: "none",
             borderRadius: "8px",
@@ -136,8 +145,9 @@ function Register({ onRegister }) {
           onClick={() => navigate("/login")}
           style={{
             marginTop: 16,
-            background: "#3b4cca",
-            color: "#fff",
+            // El rojo a la izquierda y el amarillo a la derecha, el rojo en menor medida
+            background: "linear-gradient(90deg, #b71c1c 15%, #ffcb05 100%)",
+            color: "#222",
             border: "none",
             borderRadius: "8px",
             padding: "10px 0",
@@ -146,6 +156,7 @@ function Register({ onRegister }) {
             fontSize: "1rem",
             cursor: "pointer",
             boxShadow: "0 2px 8px #0002",
+            transition: "background 0.2s",
           }}
         >
           Volver
