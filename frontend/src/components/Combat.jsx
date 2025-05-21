@@ -2,7 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from "react-router-dom";
 
 function getMovesBeforeLevel(moves, maxLevel = 5) {
+  // Si el movimiento fue aprendido manualmente (version_group_details vacío), inclúyelo siempre
   const filteredMoves = moves.filter(moveEntry =>
+    moveEntry.version_group_details.length === 0 ||
     moveEntry.version_group_details.some(detail =>
       detail.move_learn_method.name === "level-up" &&
       detail.level_learned_at <= maxLevel
@@ -30,9 +32,9 @@ function findNextEvolution(chain, currentName) {
   if (chain.species.name === currentName) {
     return chain.evolves_to[0]?.evolution_details[0]
       ? {
-          ...chain.evolves_to[0].evolution_details[0],
-          species: chain.evolves_to[0].species
-        }
+        ...chain.evolves_to[0].evolution_details[0],
+        species: chain.evolves_to[0].species
+      }
       : null;
   }
 
@@ -99,11 +101,74 @@ function Combat() {
   const [combatLog, setCombatLog] = useState([]);
   const [showItemSelection, setShowItemSelection] = useState(false);
   const [inventory, setInventory] = useState({ pokeball: 0 });
+  const [moveLearning, setMoveLearning] = useState(null); // {pokemon, newMove}
 
   const addToCombatLog = (message) => {
     setCombatLog(prevLog => [...prevLog, message]);
   };
 
+  function replaceMove(pokemon, moveIndex, newMove) {
+    const updatedTeam = [...team];
+    const poke = { ...pokemon };
+    poke.moves = [...poke.moves];
+    poke.moves[moveIndex] = {
+      move: { name: newMove },
+      version_group_details: []
+    };
+    updatedTeam[team.indexOf(pokemon)] = poke;
+    setTeam(updatedTeam);
+    setMoveLearning(null);
+    addToCombatLog(`${poke.name} aprendió ${newMove}!`);
+  }
+
+  async function checkForNewMoves(pokemon) {
+    const res = await fetch(`http://localhost:8000/pokemon/${pokemon.name}`);
+    const data = await res.json();
+
+    // Movimientos que se aprenden exactamente al nivel actual
+    const newMoves = data.moves.filter(
+      (move) =>
+        move.version_group_details.some(
+          (detail) =>
+            detail.move_learn_method.name === "level-up" &&
+            detail.level_learned_at === pokemon.level
+        )
+    );
+
+    // Obtén SOLO los 4 movimientos equipados actuales
+    const equippedMoves = pokemon.moves.slice(0, 4);
+    const currentMoveNames = equippedMoves.map(m =>
+      typeof m === "string"
+        ? m
+        : m.move?.name || m.name || ""
+    );
+
+    console.log("Movimientos nuevos posibles:", newMoves.map(m => m.move.name));
+    console.log("Movimientos actuales:", currentMoveNames);
+
+    if (newMoves.length > 0) {
+      const newMoveName = newMoves[0].move.name;
+      if (currentMoveNames.includes(newMoveName)) return;
+
+      if (equippedMoves.length < 4) {
+        // Añadir el nuevo movimiento al final de los equipados
+        const updatedTeam = [...team];
+        const poke = { ...pokemon };
+        poke.moves = [...equippedMoves, { move: { name: newMoveName }, version_group_details: [] }];
+        // Si el Pokémon tenía más de 4 movimientos, añade los demás después
+        if (pokemon.moves.length > 4) {
+          poke.moves = [...poke.moves, ...pokemon.moves.slice(4)];
+        }
+        updatedTeam[team.indexOf(pokemon)] = poke;
+        setTeam(updatedTeam);
+        addToCombatLog(`${poke.name} aprendió ${newMoveName}!`);
+        return;
+      }
+
+      // Si tiene 4 movimientos, mostrar el modal para reemplazar
+      setMoveLearning({ pokemon, newMove: newMoveName });
+    }
+  }
 
   useEffect(() => {
     if (team.length > 0) {
@@ -149,7 +214,7 @@ function Combat() {
         const allFainted = newHPs.every(hp => hp <= 0);
         if (newHPs[activePokemonIndex] == 0) {
           setShowTeamSelection(true);
-        } else if(allFainted) {
+        } else if (allFainted) {
           console.log("Todos los Pokémon del jugador han sido derrotados");
         }
       }
@@ -217,13 +282,13 @@ function Combat() {
     // console.log(`¡${yourPokemon.name} usó ${moveName} contra ${randomPokemon.name}!`);
 
     yourPokemon.IVs = {
-            hp: Math.floor(Math.random() * 32),
-            attack: Math.floor(Math.random() * 32),
-            defense: Math.floor(Math.random() * 32),
-            "special-attack": Math.floor(Math.random() * 32),
-            "special-defense": Math.floor(Math.random() * 32),
-            speed: Math.floor(Math.random() * 32),
-          };
+      hp: Math.floor(Math.random() * 32),
+      attack: Math.floor(Math.random() * 32),
+      defense: Math.floor(Math.random() * 32),
+      "special-attack": Math.floor(Math.random() * 32),
+      "special-defense": Math.floor(Math.random() * 32),
+      speed: Math.floor(Math.random() * 32),
+    };
 
     const moveRes = await fetch(`http://localhost:8000/move/${moveName}`);
     const moveData = await moveRes.json();
@@ -248,7 +313,7 @@ function Combat() {
 
     let damage = 0;
     console.log(atk, def);
-    if(power != 0) {
+    if (power != 0) {
       damage = 0.01 * stab * effectiveness * randomNumber *
         ((((0.2 * level + 1) * atk * power) / (25 * def)) + 2);
     }
@@ -272,7 +337,7 @@ function Combat() {
         let currentPokemon = { ...updatedTeam[activePokemonIndex] };
 
         const previousLevel = currentPokemon.level;
-        const newLevel = previousLevel + 5; //Cambiar
+        const newLevel = previousLevel + 1; //Cambiar
 
         currentPokemon.level = newLevel;
         currentPokemon.stats = calculateActualStats(
@@ -309,6 +374,8 @@ function Combat() {
           if (evolvedPokemon.name !== currentPokemon.name) {
             addToCombatLog(`${currentPokemon.name} evolucionó a ${evolvedPokemon.name}!`);
           }
+          // Chequea si aprende un nuevo movimiento
+          await checkForNewMoves(updatedTeam[activePokemonIndex]);
         })();
 
         setShowItemSelection(true);
@@ -324,7 +391,7 @@ function Combat() {
 
     const moveIndex = Math.floor(Math.random() * 4);
     const move = getMovesBeforeLevel(randomPokemon.moves, 5)[moveIndex];
-    
+
     if (!move) return;
 
     const moveRes = await fetch(`http://localhost:8000/move/${move}`);
@@ -363,8 +430,8 @@ function Combat() {
 
   async function handleTurn(moveName, playerPokemon) {
     if (!randomPokemon || !playerPokemon || !randomPokemon.stats || !playerPokemon.stats) return;
-    
-    
+
+
 
     const playerSpeed = playerPokemon.stats.speed;
     const wildSpeed = randomPokemon.stats.speed;
@@ -459,7 +526,6 @@ function Combat() {
       <div style={{ display: 'flex', gap: '30px', alignItems: 'flex-start' }}>
         {/* Zona de combate: izquierda */}
         <div style={{ flex: 1 }}>
-
           {!showTeamSelection ? (
             <div style={{
               border: "1px solid #ccc",
@@ -627,7 +693,7 @@ function Combat() {
                         {move}
                       </li>
                     ))
-          )}
+                  )}
                 </ul>
               </div>
             </div>
@@ -782,6 +848,65 @@ function Combat() {
           >
             Lanzar Pokéball ({inventory.pokeball})
           </button>
+        )}
+        {moveLearning && (
+          <div style={{
+            position: 'fixed',
+            top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 2000,
+          }}>
+            <div style={{
+              backgroundColor: '#fff',
+              padding: '30px',
+              borderRadius: '15px',
+              textAlign: 'center',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+            }}>
+              <h3>{moveLearning.pokemon.name} quiere aprender {moveLearning.newMove}.</h3>
+              <p>¿Quieres reemplazar uno de los movimientos actuales?</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '20px' }}>
+                {moveLearning.pokemon.moves.map((moveObj, idx) => (
+                  <button
+                    key={idx}
+                    style={{
+                      padding: '10px 20px',
+                      borderRadius: '10px',
+                      border: 'none',
+                      fontSize: '16px',
+                      fontWeight: 'bold',
+                      cursor: 'pointer',
+                      backgroundColor: '#3498db',
+                      color: 'white',
+                      transition: 'background-color 0.3s',
+                    }}
+                    onClick={() => replaceMove(moveLearning.pokemon, idx, moveLearning.newMove)}
+                  >
+                    Reemplazar {moveObj.move?.name || moveObj}
+                  </button>
+                ))}
+                <button
+                  style={{
+                    padding: '10px 20px',
+                    borderRadius: '10px',
+                    border: 'none',
+                    fontSize: '16px',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    backgroundColor: '#e74c3c',
+                    color: 'white',
+                    transition: 'background-color 0.3s',
+                  }}
+                  onClick={() => setMoveLearning(null)}
+                >
+                  Mantener movimientos actuales
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>
