@@ -25,6 +25,64 @@ function calculateActualStats(baseStats, level, IVs) {
   return actual;
 }
 
+// Ayudante recursivo para encontrar la evolución
+function findNextEvolution(chain, currentName) {
+  if (chain.species.name === currentName) {
+    return chain.evolves_to[0]?.evolution_details[0]
+      ? {
+          ...chain.evolves_to[0].evolution_details[0],
+          species: chain.evolves_to[0].species
+        }
+      : null;
+  }
+
+  for (const child of chain.evolves_to) {
+    const result = findNextEvolution(child, currentName);
+    if (result) return result;
+  }
+
+  return null;
+}
+
+async function checkEvolution(currentPokemon) {
+  // 1. Obtén la cadena de evolución
+  const res = await fetch(`http://localhost:8000/evolution/${currentPokemon.name}`);
+  const evoChain = await res.json();
+
+  // 2. Busca si hay una evolución disponible
+  const evolution = findNextEvolution(evoChain.chain, currentPokemon.name);
+
+  // 3. Si hay evolución y cumple el nivel, pide los datos del Pokémon evolucionado
+  if (evolution && evolution.min_level && currentPokemon.level >= evolution.min_level) {
+    const evolvedName = evolution.species.name.toLowerCase();
+    const pokeRes = await fetch(`http://localhost:8000/pokemon/${evolvedName}`);
+    const evolvedData = await pokeRes.json();
+
+    if (!evolvedData.stats) {
+      return currentPokemon;
+    }
+
+    // 4. Calcula los stats actuales
+    const actualStats = calculateActualStats(
+      evolvedData.stats,
+      currentPokemon.level,
+      currentPokemon.IVs
+    );
+
+    return {
+      ...currentPokemon,
+      name: evolvedData.name,
+      image: evolvedData.image,
+      moves: evolvedData.moves,
+      baseStats: evolvedData.stats,
+      stats: actualStats,
+      types: evolvedData.types
+    };
+  }
+
+  return currentPokemon;
+}
+
 function Combat() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -153,7 +211,7 @@ function Combat() {
   }
 
   async function fightWildPokemon(moveName, yourPokemon) {
-    if (!randomPokemon) return; // Por seguridad, que haya pokemon salvaje
+    if (!randomPokemon) return;
 
     // console.log(`¡${yourPokemon.name} usó ${moveName} contra ${randomPokemon.name}!`);
 
@@ -210,12 +268,11 @@ function Combat() {
 
         // Subir de nivel al Pokémon del jugador
         const updatedTeam = [...team];
-        const currentPokemon = { ...updatedTeam[activePokemonIndex] };
+        let currentPokemon = { ...updatedTeam[activePokemonIndex] };
 
         const previousLevel = currentPokemon.level;
-        const newLevel = previousLevel + 1;
+        const newLevel = previousLevel + 5; //Cambiar
 
-        // baseStats ya debe existir y ser correcto
         currentPokemon.level = newLevel;
         currentPokemon.stats = calculateActualStats(
           currentPokemon.baseStats,
@@ -223,7 +280,6 @@ function Combat() {
           currentPokemon.IVs
         );
 
-        // Actualizar HP total (nuevo máximo) y mantener el HP actual (sin curarlo)
         const newTeamHP = [...teamHP];
         const previousHP = newTeamHP[activePokemonIndex];
 
@@ -243,8 +299,16 @@ function Combat() {
 
         addToCombatLog(`${currentPokemon.name} subió al nivel ${currentPokemon.level}!`);
 
-        updatedTeam[activePokemonIndex] = currentPokemon;
-        setTeam(updatedTeam);
+        // --- EVOLUCIÓN ---
+        (async () => {
+          const evolvedPokemon = await checkEvolution(currentPokemon);
+          updatedTeam[activePokemonIndex] = evolvedPokemon;
+          setTeam(updatedTeam);
+
+          if (evolvedPokemon.name !== currentPokemon.name) {
+            addToCombatLog(`${currentPokemon.name} evolucionó a ${evolvedPokemon.name}!`);
+          }
+        })();
 
         setShowItemSelection(true);
       }
@@ -316,25 +380,43 @@ function Combat() {
       }
 
     } else {
-      await wildAttack(playerPokemon);
+      // Calcula el daño antes de actualizar el estado
+      const moveIndex = Math.floor(Math.random() * 4);
+      const move = getMovesBeforeLevel(randomPokemon.moves, 5)[moveIndex];
+      if (!move) return;
 
-      // Comprobamos si el Pokémon del jugador sigue vivo después del ataque
-      const updatedPlayerHP = teamHP[activePokemonIndex];
+      const moveRes = await fetch(`http://localhost:8000/move/${move}`);
+      const moveData = await moveRes.json();
+
+      const power = moveData.power || 0;
+      const type = moveData.type;
+      const damageType = moveData.damage_class || "physical";
+      const effectiveness = await fetchEffectiveness(type, playerPokemon.types || []);
+      const level = randomPokemon.level || 5;
+      const atkCat = damageType === 'special' ? 'special-attack' : 'attack';
+      const defCat = damageType === 'special-defense' ? 'special-defense' : 'defense';
+      const atk = randomPokemon.stats[atkCat];
+      const def = playerPokemon.stats[defCat];
+      const stab = randomPokemon.types.includes(type) ? 1.5 : 1;
+      const randomNumber = Math.floor(Math.random() * (100 - 85 + 1)) + 85;
+
+      let damage = 0;
+      if (power !== 0) {
+        damage = 0.01 * stab * effectiveness * randomNumber *
+          ((((0.2 * level + 1) * atk * power) / (25 * def)) + 2);
+      }
+      const roundedDamage = Math.round(damage);
+      const updatedPlayerHP = Math.max(teamHP[activePokemonIndex] - roundedDamage, 0);
+
+      addToCombatLog(`${randomPokemon.name} usó ${move} e infligió ${roundedDamage} de daño a ${playerPokemon.name}.`);
+      applyDamageToPlayer(roundedDamage);
+
+      // Solo ataca si sigue vivo
       if (updatedPlayerHP > 0) {
         await fightWildPokemon(moveName, playerPokemon);
       }
     }
-
-    if (teamHP[activePokemonIndex] <= 0) {
-      console.log("Tu Pokémon actual está debilitado. Debes elegir otro.");
-      return;
-    }
-
-    if (teamHP[activePokemonIndex] <= 0) {
-      addToCombatLog(`${playerPokemon.name} ha sido derrotado. Elige otro Pokémon.`);
-    }
   }
-  
   const movesBeforeLevel5 = randomPokemon ? getMovesBeforeLevel(randomPokemon.moves, 5) : [];
 
   React.useEffect(() => {

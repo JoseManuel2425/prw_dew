@@ -107,3 +107,27 @@ def get_type_effectiveness(attacking_type: str, defender_types: str):
             multiplier *= 0
 
     return {"effectiveness": multiplier}
+
+@router.get("/evolution/{pokemon_name}")
+def get_evolution(pokemon_name: str):
+    species_data = requests.get(f"https://pokeapi.co/api/v2/pokemon-species/{pokemon_name}").json()
+    evo_chain_url = species_data["evolution_chain"]["url"]
+    evo_chain = requests.get(evo_chain_url).json()
+
+    return evo_chain  # Puedes filtrar y simplificar si prefieres
+
+@router.get("/pokemon/{pokemon_name}")
+def get_pokemon(pokemon_name: str):
+    pokemon_name = pokemon_name.lower()  # <-- fuerza minúsculas
+    pokemon_res = session.get(f"https://pokeapi.co/api/v2/pokemon/{pokemon_name}")
+    if pokemon_res.status_code != 200:
+        return {"error": "Pokémon no encontrado"}
+    pokemon_data = pokemon_res.json()
+    pokemon = {
+        "name": pokemon_data["name"],
+        "image": pokemon_data["sprites"]["front_default"],
+        "types": [t["type"]["name"] for t in pokemon_data["types"]],
+        "stats": {st["stat"]["name"]: st["base_stat"] for st in pokemon_data["stats"]},
+        "moves": pokemon_data.get("moves", []),
+    }
+    return pokemon
