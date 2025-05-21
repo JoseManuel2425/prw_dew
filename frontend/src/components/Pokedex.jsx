@@ -245,55 +245,57 @@ function Pokedex({ user, setUser, pokemonList, loadingPokemons }) {
         }}>
             {/* Estilos responsivos */}
             <style>
-                {`
+              {`
                 .pokedex-main, .pokedex-grid {
-                    box-sizing: border-box;
+                  box-sizing: border-box;
                 }
                 @media (max-width: 900px) {
-                    .pokedex-root {
-                        flex-direction: column !important;
-                    }
-                    .pokedex-sidebar {
-                        width: 100% !important;
-                        border-radius: 0 0 16px 16px !important;
-                        flex-direction: column !important;
-                        justify-content: flex-start !important;
-                        align-items: stretch !important;
-                        padding: 12px 0 !important;
-                        min-height: unset !important;
-                        max-width: 100vw !important;
-                    }
-                    .pokedex-header {
-                        order: 1;
-                        text-align: center !important;
-                        margin-bottom: 12px !important;
-                        width: 100%;
-                    }
-                    .logout-btn {
-                        order: 2;
-                        display: block;
-                        margin: 0 auto 24px auto !important;
-                        width: auto !important;
-                        min-width: 120px;
-                        max-width: 200px;
-                        text-align: center;
-                    }
-                    .pokedex-selected { order: 3; }
-                    .pokedex-team {
-                        order: 4;
-                        width: 96% !important;
-                        margin: 16px auto 0 auto !important;
-                        display: flex !important;
-                        flex-direction: row !important;
-                        flex-wrap: wrap;
-                        justify-content: center;
-                        align-items: center;
-                        gap: 8px;
-                    }
-                    .pokedex-team > div {
-                        margin: 0 4px !important;
-                        min-width: 60px;
-                    }
+                  .pokedex-root {
+                    flex-direction: column !important;
+                  }
+                  .pokedex-sidebar {
+                    width: 100% !important;
+                    border-radius: 0 0 16px 16px !important;
+                    flex-direction: column !important;
+                    justify-content: flex-start !important;
+                    align-items: stretch !important;
+                    padding: 12px 0 !important;
+                    min-height: unset !important;
+                    max-width: 100vw !important;
+                  }
+                  .pokedex-header {
+                    order: 1;
+                    text-align: center !important;
+                    margin-bottom: 12px !important;
+                    width: 100%;
+                  }
+                  .logout-btn {
+                    order: 2;
+                    display: block;
+                    margin: 0 auto 24px auto !important;
+                    width: auto !important;
+                    min-width: 120px;
+                    max-width: 200px;
+                    text-align: center;
+                  }
+                  .pokedex-selected {
+                    display: none !important; /* <-- OCULTA EL VISUALIZADOR */
+                  }
+                  .pokedex-team {
+                    order: 4;
+                    width: 96% !important;
+                    margin: 16px auto 0 auto !important;
+                    display: flex !important;
+                    flex-direction: row !important;
+                    flex-wrap: wrap;
+                    justify-content: center;
+                    align-items: center;
+                    gap: 8px;
+                  }
+                  .pokedex-team > div {
+                    margin: 0 4px !important;
+                    min-width: 60px;
+                  }
                 }
                 @media (max-width: 700px) {
                     .pokedex-main {
@@ -508,7 +510,16 @@ function Pokedex({ user, setUser, pokemonList, loadingPokemons }) {
                                 }}
                                 title={team.length < 6 ? "Añadir al equipo" : "Equipo lleno"}
                             >
-                                <img src={pokemon.image} alt={pokemon.name} style={{ width: 48, filter: "drop-shadow(0 0 2px #0008)" }} />
+                                <img
+                                  src={pokemon.image}
+                                  alt={pokemon.name}
+                                  style={{
+                                    width: 76,
+                                    height: 76,
+                                    objectFit: "contain",
+                                    filter: "drop-shadow(0 0 2px #0008)"
+                                  }}
+                                />
                             </div>
                         ))}
                     </div>
