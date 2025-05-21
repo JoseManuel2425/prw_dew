@@ -98,6 +98,7 @@ function Combat() {
   const [isManualSwitch, setIsManualSwitch] = useState(false);
   const [combatLog, setCombatLog] = useState([]);
   const [showItemSelection, setShowItemSelection] = useState(false);
+  const [inventory, setInventory] = useState({ pokeball: 0 });
 
   const addToCombatLog = (message) => {
     setCombatLog(prevLog => [...prevLog, message]);
@@ -693,7 +694,8 @@ function Combat() {
                 <button
                   style={buttonStyle}
                   onClick={() => {
-                    addToCombatLog("¡Lanzaste una Pokéball! (aún no implementado)");
+                    setInventory(inv => ({ ...inv, pokeball: inv.pokeball + 1 }));
+                    addToCombatLog("¡Has recibido una Pokéball!");
                     setShowItemSelection(false);
                     generateRandomPokemon();
                   }}
@@ -712,6 +714,74 @@ function Combat() {
               </div>
             </div>
           </div>
+        )}
+        {inventory.pokeball > 0 && randomPokemon && (
+          <button
+            style={{
+              marginTop: '10px',
+              padding: '8px 14px',
+              borderRadius: '20px',
+              border: 'none',
+              backgroundColor: '#e74c3c',
+              color: 'white',
+              cursor: 'pointer',
+              fontWeight: '600',
+              fontSize: '14px',
+              boxShadow: '0 2px 6px rgba(231, 76, 60, 0.4)',
+              transition: 'background-color 0.3s',
+              display: 'block',
+              width: '100%',
+            }}
+            onClick={async () => {
+              if (inventory.pokeball <= 0) return;
+              setInventory(inv => ({ ...inv, pokeball: inv.pokeball - 1 }));
+
+              // Lógica de captura simple (puedes mejorarla)
+              const success = Math.random() < 0.5; // 50% de probabilidad
+              if (success) {
+                addToCombatLog(`¡Capturaste a ${randomPokemon.name}!`);
+                setShowItemSelection(false);
+
+                // Si el equipo tiene menos de 6, añade el Pokémon capturado
+                setTeam(prevTeam => {
+                  if (prevTeam.length < 6) {
+                    // Asigna IVs y nivel al capturado
+                    const IVs = {
+                      hp: Math.floor(Math.random() * 32),
+                      attack: Math.floor(Math.random() * 32),
+                      defense: Math.floor(Math.random() * 32),
+                      "special-attack": Math.floor(Math.random() * 32),
+                      "special-defense": Math.floor(Math.random() * 32),
+                      speed: Math.floor(Math.random() * 32),
+                    };
+                    const level = 5;
+                    const baseStats = randomPokemon.stats;
+                    const stats = calculateActualStats(baseStats, level, IVs);
+                    const newPokemon = {
+                      ...randomPokemon,
+                      IVs,
+                      level,
+                      baseStats,
+                      stats,
+                    };
+                    setTeamHP(hpArr => [...hpArr, stats.hp]);
+                    return [...prevTeam, newPokemon];
+                  }
+                  return prevTeam;
+                });
+
+                setRandomPokemon(null);
+                setWildPokemonHP(null);
+
+                generateRandomPokemon();
+              } else {
+                addToCombatLog(`¡${randomPokemon.name} escapó de la Pokéball!`);
+                await wildAttack(team[activePokemonIndex]);
+              }
+            }}
+          >
+            Lanzar Pokéball ({inventory.pokeball})
+          </button>
         )}
       </div>
     </div>
