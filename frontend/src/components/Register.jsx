@@ -24,7 +24,7 @@ function Register({ onRegister }) {
 
       if (response.ok) {
         alert("Registro exitoso");
-        if (onRegister) onRegister(); // Si se pasa como prop
+        if (onRegister) onRegister();
         localStorage.setItem("user", JSON.stringify(username));
         navigate("/pokedex");
       } else {
@@ -37,80 +37,120 @@ function Register({ onRegister }) {
   };
 
   return (
-    <div style={{
-      maxWidth: 300,
-      margin: "0 auto",
-      textAlign: "center",
-      background: "#fff",
-      borderRadius: "16px",
-      boxShadow: "0 4px 24px #0002",
-      padding: "32px 28px"
-    }}>
-      <h2 style={{
-        marginBottom: 24,
-        fontFamily: "monospace",
-        color: "#3b4cca",
-        fontWeight: 700
-      }}>Registro de usuario</h2>
-      <input
-        type="text"
-        placeholder="Usuario"
-        value={username}
-        onChange={e => setUsername(e.target.value)}
+    <div
+      style={{
+        height: "100vh",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        backgroundColor: "#f0f0f0",
+      }}
+    >
+      <div
         style={{
-          marginBottom: 12,
-          padding: "10px",
-          borderRadius: "8px",
-          border: "1px solid #bbb",
-          width: "100%",
-          fontSize: "1rem"
-        }}
-      />
-      <input
-        type="password"
-        placeholder="Contraseña"
-        value={password}
-        onChange={e => setPassword(e.target.value)}
-        style={{
-          marginBottom: 12,
-          padding: "10px",
-          borderRadius: "8px",
-          border: "1px solid #bbb",
-          width: "100%",
-          fontSize: "1rem"
-        }}
-      />
-      <input
-        type="password"
-        placeholder="Repetir contraseña"
-        value={repeatPassword}
-        onChange={e => setRepeatPassword(e.target.value)}
-        style={{
-          marginBottom: 24,
-          padding: "10px",
-          borderRadius: "8px",
-          border: "1px solid #bbb",
-          width: "100%",
-          fontSize: "1rem"
-        }}
-      />
-      <button
-        onClick={handleRegister}
-        style={{
-          background: "linear-gradient(90deg, #ffcb05 60%, #3b4cca 100%)",
-          color: "#222",
-          border: "none",
-          borderRadius: "8px",
-          padding: "10px 0",
-          width: "100%",
-          fontWeight: 700,
-          fontSize: "1rem",
-          cursor: "pointer",
-          boxShadow: "0 2px 8px #0001"
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          minHeight: "340px",
+          minWidth: "320px",
+          maxWidth: "400px",
+          width: "90%",
+          background: "#fff",
+          borderRadius: "16px",
+          boxShadow: "0 4px 24px #0002",
+          padding: "32px 28px",
+          margin: "32px 0",
         }}
       >
-        Registrarse
-      </button>
+        <h2
+          style={{
+            marginBottom: 24,
+            fontFamily: "monospace",
+            color: "#3b4cca",
+            fontWeight: 700,
+          }}
+        >
+          Registro de usuario
+        </h2>
+        <input
+          type="text"
+          placeholder="Usuario"
+          value={username}
+          onChange={e => setUsername(e.target.value)}
+          style={{
+            marginBottom: 12,
+            padding: "10px",
+            borderRadius: "8px",
+            border: "1px solid #bbb",
+            width: "100%",
+            fontSize: "1rem"
+          }}
+        />
+        <input
+          type="password"
+          placeholder="Contraseña"
+          value={password}
+          onChange={e => setPassword(e.target.value)}
+          style={{
+            marginBottom: 12,
+            padding: "10px",
+            borderRadius: "8px",
+            border: "1px solid #bbb",
+            width: "100%",
+            fontSize: "1rem"
+          }}
+        />
+        <input
+          type="password"
+          placeholder="Repetir contraseña"
+          value={repeatPassword}
+          onChange={e => setRepeatPassword(e.target.value)}
+          style={{
+            marginBottom: 24,
+            padding: "10px",
+            borderRadius: "8px",
+            border: "1px solid #bbb",
+            width: "100%",
+            fontSize: "1rem"
+          }}
+        />
+        <button
+          onClick={handleRegister}
+          style={{
+            background: "linear-gradient(90deg, #ffcb05 60%, #3b4cca 100%)",
+            color: "#222",
+            border: "none",
+            borderRadius: "8px",
+            padding: "10px 0",
+            width: "100%",
+            fontWeight: 700,
+            fontSize: "1rem",
+            cursor: "pointer",
+            boxShadow: "0 2px 8px #0001"
+          }}
+        >
+          Registrarse
+        </button>
+        <button
+          onClick={() => navigate("/login")}
+          style={{
+            marginTop: 16,
+            background: "#3b4cca",
+            color: "#fff",
+            border: "none",
+            borderRadius: "8px",
+            padding: "10px 0",
+            width: "100%",
+            fontWeight: 700,
+            fontSize: "1rem",
+            cursor: "pointer",
+            boxShadow: "0 2px 8px #0002",
+          }}
+        >
+          Volver
+        </button>
+      </div>
     </div>
   );
 }

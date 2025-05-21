@@ -226,7 +226,9 @@ function Combat() {
   async function wildAttack(playerPokemon) {
     if (!randomPokemon || !playerPokemon) return;
 
-    const move = getMovesBeforeLevel(randomPokemon.moves, 5)[0]; // usa el primer movimiento disponible
+    const moveIndex = Math.floor(Math.random() * 4);
+    const move = getMovesBeforeLevel(randomPokemon.moves, 5)[moveIndex];
+    
     if (!move) return;
 
     const moveRes = await fetch(`http://localhost:8000/move/${move}`);

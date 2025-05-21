@@ -27,6 +27,7 @@ function Login({ onLogin }) {
     }
   };
 
+  // Color rojo de la Pokédex: #b71c1c
   return (
     <div
       style={{
@@ -34,7 +35,7 @@ function Login({ onLogin }) {
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        backgroundColor: "#f0f0f0",
+        background: "radial-gradient(circle at 50% 50%, #888 0%, #444 60%, #222 100%)",
       }}
     >
       <div
@@ -45,11 +46,11 @@ function Login({ onLogin }) {
           justifyContent: "center",
           minHeight: "340px",
           minWidth: "320px",
-          maxWidth: "400px",   // ancho máximo
-          width: "90%",        // ancho adaptable en pantallas pequeñas
-          background: "#fff",
+          maxWidth: "400px",
+          width: "90%",
+          background: "#444",
           borderRadius: "16px",
-          boxShadow: "0 4px 24px #0002",
+          boxShadow: "0 4px 24px #0008",
           padding: "32px 28px",
           margin: "32px 0",
         }}
@@ -58,8 +59,9 @@ function Login({ onLogin }) {
           style={{
             marginBottom: 24,
             fontFamily: "monospace",
-            color: "#3b4cca",
+            color: "#ffcb05",
             fontWeight: 700,
+            letterSpacing: 1,
           }}
         >
           Iniciar sesión
@@ -76,6 +78,9 @@ function Login({ onLogin }) {
             border: "1px solid #bbb",
             width: "100%",
             fontSize: "1rem",
+            background: "#222",
+            color: "#fff",
+            outline: "none",
           }}
         />
         <input
@@ -90,12 +95,15 @@ function Login({ onLogin }) {
             border: "1px solid #bbb",
             width: "100%",
             fontSize: "1rem",
+            background: "#222",
+            color: "#fff",
+            outline: "none",
           }}
         />
         <button
           onClick={handleLogin}
           style={{
-            background: "linear-gradient(90deg, #ffcb05 60%, #3b4cca 100%)",
+            background: "linear-gradient(90deg, #ffcb05 60%, #b71c1c 100%)",
             color: "#222",
             border: "none",
             borderRadius: "8px",
@@ -105,6 +113,8 @@ function Login({ onLogin }) {
             fontSize: "1rem",
             cursor: "pointer",
             boxShadow: "0 2px 8px #0001",
+            marginBottom: 8,
+            transition: "background 0.2s",
           }}
         >
           Entrar
@@ -113,9 +123,10 @@ function Login({ onLogin }) {
         <button
           onClick={() => navigate("/register")}
           style={{
-            marginTop: 16,
-            background: "#3b4cca",
-            color: "#fff",
+            marginTop: 8,
+            // El rojo a la izquierda y el amarillo a la derecha, el rojo en menor medida
+            background: "linear-gradient(90deg, #b71c1c 30%, #ffcb05 100%)",
+            color: "#222",
             border: "none",
             borderRadius: "8px",
             padding: "10px 0",
@@ -124,6 +135,7 @@ function Login({ onLogin }) {
             fontSize: "1rem",
             cursor: "pointer",
             boxShadow: "0 2px 8px #0002",
+            transition: "background 0.2s",
           }}
         >
           Registrarse
