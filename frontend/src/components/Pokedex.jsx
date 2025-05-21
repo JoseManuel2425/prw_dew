@@ -236,12 +236,12 @@ function Pokedex({ user, setUser, pokemonList, loadingPokemons }) {
     return (
         <div className="pokedex-root" style={{
             display: "flex",
-            minHeight: "100vh",
+            height: "100vh",
             background: "#222",
             fontFamily: "monospace",
             boxSizing: "border-box",
-            width: "100vw",
-            overflowX: "hidden"
+            width: "100%",
+            overflow: "hidden"
         }}>
             {/* Estilos responsivos */}
             <style>
@@ -335,7 +335,6 @@ function Pokedex({ user, setUser, pokemonList, loadingPokemons }) {
                 borderTopRightRadius: 16,
                 borderBottomRightRadius: 16,
                 boxShadow: "2px 0 8px #0008",
-                minHeight: "100vh",
                 zIndex: 2
             }}>
                 <div className="pokedex-header" style={{
@@ -429,7 +428,7 @@ function Pokedex({ user, setUser, pokemonList, loadingPokemons }) {
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
-                padding: "32px 0",
+                padding: "8px 0 0 0", // <--- Reduce el padding superior
                 margin: "0 auto",
                 width: "100%",
                 maxWidth: "1400px",
@@ -440,7 +439,7 @@ function Pokedex({ user, setUser, pokemonList, loadingPokemons }) {
                     background: "#444",
                     borderRadius: 24,
                     boxShadow: "0 4px 24px #0008",
-                    padding: 36,
+                    padding: 16, // <--- Reduce el padding interno
                     width: "100%",
                     maxWidth: "1400px",
                     boxSizing: "border-box"
