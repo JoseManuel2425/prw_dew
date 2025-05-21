@@ -25,11 +25,70 @@ function calculateActualStats(baseStats, level, IVs) {
   return actual;
 }
 
+// Ayudante recursivo para encontrar la evolución
+function findNextEvolution(chain, currentName) {
+  if (chain.species.name === currentName) {
+    return chain.evolves_to[0]?.evolution_details[0]
+      ? {
+          ...chain.evolves_to[0].evolution_details[0],
+          species: chain.evolves_to[0].species
+        }
+      : null;
+  }
+
+  for (const child of chain.evolves_to) {
+    const result = findNextEvolution(child, currentName);
+    if (result) return result;
+  }
+
+  return null;
+}
+
+async function checkEvolution(currentPokemon) {
+  // 1. Obtén la cadena de evolución
+  const res = await fetch(`http://localhost:8000/evolution/${currentPokemon.name}`);
+  const evoChain = await res.json();
+
+  // 2. Busca si hay una evolución disponible
+  const evolution = findNextEvolution(evoChain.chain, currentPokemon.name);
+
+  // 3. Si hay evolución y cumple el nivel, pide los datos del Pokémon evolucionado
+  if (evolution && evolution.min_level && currentPokemon.level >= evolution.min_level) {
+    const evolvedName = evolution.species.name.toLowerCase();
+    const pokeRes = await fetch(`http://localhost:8000/pokemon/${evolvedName}`);
+    const evolvedData = await pokeRes.json();
+
+    if (!evolvedData.stats) {
+      return currentPokemon;
+    }
+
+    // 4. Calcula los stats actuales
+    const actualStats = calculateActualStats(
+      evolvedData.stats,
+      currentPokemon.level,
+      currentPokemon.IVs
+    );
+
+    return {
+      ...currentPokemon,
+      name: evolvedData.name,
+      image: evolvedData.image,
+      moves: evolvedData.moves,
+      baseStats: evolvedData.stats,
+      stats: actualStats,
+      types: evolvedData.types
+    };
+  }
+
+  return currentPokemon;
+}
+
 function Combat() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const team = location.state?.team || [];
+  const initialTeam = location.state?.team || [];
+  const [team, setTeam] = useState(initialTeam);
   const [randomPokemon, setRandomPokemon] = useState(null);
   const [wildPokemonHP, setWildPokemonHP] = useState(null);
   const [playerPokemonHP, setPlayerPokemonHP] = useState(null);
@@ -38,6 +97,8 @@ function Combat() {
   const [showTeamSelection, setShowTeamSelection] = useState(false);
   const [isManualSwitch, setIsManualSwitch] = useState(false);
   const [combatLog, setCombatLog] = useState([]);
+  const [showItemSelection, setShowItemSelection] = useState(false);
+  const [inventory, setInventory] = useState({ pokeball: 0 });
 
   const addToCombatLog = (message) => {
     setCombatLog(prevLog => [...prevLog, message]);
@@ -61,13 +122,23 @@ function Combat() {
         };
         pokemon.IVs = IVs;
         pokemon.level = level;
-        pokemon.stats = calculateActualStats(pokemon.stats, level, IVs);
+
+        // GUARDA los stats base originales SOLO si no existen
+        if (!pokemon.baseStats) {
+          // Si el backend te da los stats base en otra propiedad, usa esa
+          // Por ejemplo: pokemon.baseStats = { ...pokemon.base_stats };
+          pokemon.baseStats = { ...pokemon.stats }; // <-- Aquí deben ser los stats base del backend
+        }
+
+        // Calcula los stats reales a partir de los base
+        pokemon.stats = calculateActualStats(pokemon.baseStats, level, IVs);
+
         newTeamHP.push(pokemon.stats.hp);
       });
 
       setTeamHP(newTeamHP);
     }
-  }, [team]);
+  }, []);
 
   const applyDamageToPlayer = (damage) => {
     setTeamHP(prevHPs => {
@@ -141,7 +212,7 @@ function Combat() {
   }
 
   async function fightWildPokemon(moveName, yourPokemon) {
-    if (!randomPokemon) return; // Por seguridad, que haya pokemon salvaje
+    if (!randomPokemon) return;
 
     // console.log(`¡${yourPokemon.name} usó ${moveName} contra ${randomPokemon.name}!`);
 
@@ -198,24 +269,49 @@ function Combat() {
 
         // Subir de nivel al Pokémon del jugador
         const updatedTeam = [...team];
-        const currentPokemon = { ...updatedTeam[activePokemonIndex] };
+        let currentPokemon = { ...updatedTeam[activePokemonIndex] };
 
-        yourPokemon.level = currentPokemon.level += 1;
-        currentPokemon.stats = calculateActualStats(currentPokemon.stats, currentPokemon.level, currentPokemon.IVs);
-        updatedTeam[activePokemonIndex] = currentPokemon;
+        const previousLevel = currentPokemon.level;
+        const newLevel = previousLevel + 5; //Cambiar
 
-        // Actualizar HP total (nuevo máximo) y mantener el HP actual (sin curarlo)
+        currentPokemon.level = newLevel;
+        currentPokemon.stats = calculateActualStats(
+          currentPokemon.baseStats,
+          newLevel,
+          currentPokemon.IVs
+        );
+
         const newTeamHP = [...teamHP];
         const previousHP = newTeamHP[activePokemonIndex];
+
+        const previousMaxHP = calculateActualStats(
+          currentPokemon.baseStats,
+          previousLevel,
+          currentPokemon.IVs
+        ).hp;
+
         const newMaxHP = currentPokemon.stats.hp;
-        newTeamHP[activePokemonIndex] = Math.min(previousHP, newMaxHP);
+        const hpIncrement = newMaxHP - previousMaxHP;
+
+        newTeamHP[activePokemonIndex] = Math.min(previousHP + hpIncrement, newMaxHP);
 
         setPlayerPokemonHP(newTeamHP[activePokemonIndex]);
         setTeamHP(newTeamHP);
 
         addToCombatLog(`${currentPokemon.name} subió al nivel ${currentPokemon.level}!`);
 
-        generateRandomPokemon();
+        // --- EVOLUCIÓN ---
+        (async () => {
+          const evolvedPokemon = await checkEvolution(currentPokemon);
+          updatedTeam[activePokemonIndex] = evolvedPokemon;
+          setTeam(updatedTeam);
+
+          if (evolvedPokemon.name !== currentPokemon.name) {
+            addToCombatLog(`${currentPokemon.name} evolucionó a ${evolvedPokemon.name}!`);
+          }
+        })();
+
+        setShowItemSelection(true);
       }
       return newHP;
     });
@@ -285,25 +381,43 @@ function Combat() {
       }
 
     } else {
-      await wildAttack(playerPokemon);
+      // Calcula el daño antes de actualizar el estado
+      const moveIndex = Math.floor(Math.random() * 4);
+      const move = getMovesBeforeLevel(randomPokemon.moves, 5)[moveIndex];
+      if (!move) return;
 
-      // Comprobamos si el Pokémon del jugador sigue vivo después del ataque
-      const updatedPlayerHP = teamHP[activePokemonIndex];
+      const moveRes = await fetch(`http://localhost:8000/move/${move}`);
+      const moveData = await moveRes.json();
+
+      const power = moveData.power || 0;
+      const type = moveData.type;
+      const damageType = moveData.damage_class || "physical";
+      const effectiveness = await fetchEffectiveness(type, playerPokemon.types || []);
+      const level = randomPokemon.level || 5;
+      const atkCat = damageType === 'special' ? 'special-attack' : 'attack';
+      const defCat = damageType === 'special-defense' ? 'special-defense' : 'defense';
+      const atk = randomPokemon.stats[atkCat];
+      const def = playerPokemon.stats[defCat];
+      const stab = randomPokemon.types.includes(type) ? 1.5 : 1;
+      const randomNumber = Math.floor(Math.random() * (100 - 85 + 1)) + 85;
+
+      let damage = 0;
+      if (power !== 0) {
+        damage = 0.01 * stab * effectiveness * randomNumber *
+          ((((0.2 * level + 1) * atk * power) / (25 * def)) + 2);
+      }
+      const roundedDamage = Math.round(damage);
+      const updatedPlayerHP = Math.max(teamHP[activePokemonIndex] - roundedDamage, 0);
+
+      addToCombatLog(`${randomPokemon.name} usó ${move} e infligió ${roundedDamage} de daño a ${playerPokemon.name}.`);
+      applyDamageToPlayer(roundedDamage);
+
+      // Solo ataca si sigue vivo
       if (updatedPlayerHP > 0) {
         await fightWildPokemon(moveName, playerPokemon);
       }
     }
-
-    if (teamHP[activePokemonIndex] <= 0) {
-      console.log("Tu Pokémon actual está debilitado. Debes elegir otro.");
-      return;
-    }
-
-    if (teamHP[activePokemonIndex] <= 0) {
-      addToCombatLog(`${playerPokemon.name} ha sido derrotado. Elige otro Pokémon.`);
-    }
   }
-  
   const movesBeforeLevel5 = randomPokemon ? getMovesBeforeLevel(randomPokemon.moves, 5) : [];
 
   React.useEffect(() => {
@@ -316,6 +430,18 @@ function Combat() {
       }
     }
   }, [teamHP, team.length, navigate]);
+
+  const buttonStyle = {
+    padding: '10px 20px',
+    borderRadius: '10px',
+    border: 'none',
+    fontSize: '16px',
+    fontWeight: 'bold',
+    cursor: 'pointer',
+    backgroundColor: '#3498db',
+    color: 'white',
+    transition: 'background-color 0.3s',
+  };
 
   return (
     <div style={{
@@ -501,7 +627,7 @@ function Combat() {
                         {move}
                       </li>
                     ))
-                  )}
+          )}
                 </ul>
               </div>
             </div>
@@ -530,6 +656,133 @@ function Combat() {
             </ul>
           )}
         </div>
+        {showItemSelection && (
+          <div style={{
+            position: 'fixed',
+            top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 1000,
+          }}>
+            <div style={{
+              backgroundColor: '#fff',
+              padding: '30px',
+              borderRadius: '15px',
+              textAlign: 'center',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+            }}>
+              <h3>¡El Pokémon salvaje fue derrotado!</h3>
+              <p>¿Qué quieres hacer?</p>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '15px', marginTop: '20px' }}>
+                <button
+                  style={buttonStyle}
+                  onClick={() => {
+                    // Curar al Pokémon actual
+                    const newTeamHP = [...teamHP];
+                    const maxHP = team[activePokemonIndex].stats.hp;
+                    newTeamHP[activePokemonIndex] = maxHP;
+                    setTeamHP(newTeamHP);
+                    addToCombatLog(`${team[activePokemonIndex].name} ha sido curado al máximo.`);
+                    setShowItemSelection(false);
+                    generateRandomPokemon();
+                  }}
+                >
+                  🧪 Curar
+                </button>
+                <button
+                  style={buttonStyle}
+                  onClick={() => {
+                    setInventory(inv => ({ ...inv, pokeball: inv.pokeball + 1 }));
+                    addToCombatLog("¡Has recibido una Pokéball!");
+                    setShowItemSelection(false);
+                    generateRandomPokemon();
+                  }}
+                >
+                  🎯 Pokéball
+                </button>
+                <button
+                  style={buttonStyle}
+                  onClick={() => {
+                    setShowItemSelection(false);
+                    generateRandomPokemon();
+                  }}
+                >
+                  ⚔️ Continuar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        {inventory.pokeball > 0 && randomPokemon && (
+          <button
+            style={{
+              marginTop: '10px',
+              padding: '8px 14px',
+              borderRadius: '20px',
+              border: 'none',
+              backgroundColor: '#e74c3c',
+              color: 'white',
+              cursor: 'pointer',
+              fontWeight: '600',
+              fontSize: '14px',
+              boxShadow: '0 2px 6px rgba(231, 76, 60, 0.4)',
+              transition: 'background-color 0.3s',
+              display: 'block',
+              width: '100%',
+            }}
+            onClick={async () => {
+              if (inventory.pokeball <= 0) return;
+              setInventory(inv => ({ ...inv, pokeball: inv.pokeball - 1 }));
+
+              // Lógica de captura simple (puedes mejorarla)
+              const success = Math.random() < 0.5; // 50% de probabilidad
+              if (success) {
+                addToCombatLog(`¡Capturaste a ${randomPokemon.name}!`);
+                setShowItemSelection(false);
+
+                // Si el equipo tiene menos de 6, añade el Pokémon capturado
+                setTeam(prevTeam => {
+                  if (prevTeam.length < 6) {
+                    // Asigna IVs y nivel al capturado
+                    const IVs = {
+                      hp: Math.floor(Math.random() * 32),
+                      attack: Math.floor(Math.random() * 32),
+                      defense: Math.floor(Math.random() * 32),
+                      "special-attack": Math.floor(Math.random() * 32),
+                      "special-defense": Math.floor(Math.random() * 32),
+                      speed: Math.floor(Math.random() * 32),
+                    };
+                    const level = 5;
+                    const baseStats = randomPokemon.stats;
+                    const stats = calculateActualStats(baseStats, level, IVs);
+                    const newPokemon = {
+                      ...randomPokemon,
+                      IVs,
+                      level,
+                      baseStats,
+                      stats,
+                    };
+                    setTeamHP(hpArr => [...hpArr, stats.hp]);
+                    return [...prevTeam, newPokemon];
+                  }
+                  return prevTeam;
+                });
+
+                setRandomPokemon(null);
+                setWildPokemonHP(null);
+
+                generateRandomPokemon();
+              } else {
+                addToCombatLog(`¡${randomPokemon.name} escapó de la Pokéball!`);
+                await wildAttack(team[activePokemonIndex]);
+              }
+            }}
+          >
+            Lanzar Pokéball ({inventory.pokeball})
+          </button>
+        )}
       </div>
     </div>
   );
