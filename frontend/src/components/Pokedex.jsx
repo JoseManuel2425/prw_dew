@@ -458,6 +458,31 @@ function Pokedex({ user, setUser, pokemonList, loadingPokemons }) {
                             >
                                 Ir a Combate
                             </button>
+                            <button
+                                onClick={() => {
+                                    // Selecciona entre 3 y 6 Pokémon aleatorios de la lista filtrada
+                                    const min = 3;
+                                    const max = 6;
+                                    const count = Math.floor(Math.random() * (max - min + 1)) + min;
+                                    // Filtra para evitar duplicados y pokémon ya en el equipo
+                                    const available = pokemonList.filter(p => !team.some(tp => tp.name === p.name));
+                                    // Baraja el array
+                                    const shuffled = [...available].sort(() => 0.5 - Math.random());
+                                    const randomTeam = shuffled.slice(0, count);
+                                    navigate("/combat", { state: { team: randomTeam } });
+                                }}
+                                style={{
+                                    background: "#b71c1c",
+                                    color: "#fff",
+                                    border: "none",
+                                    borderRadius: 12,
+                                    padding: "12px 20px",
+                                    fontWeight: "bold",
+                                    cursor: "pointer"
+                                }}
+                            >
+                                Equipo Aleatorio
+                            </button>
                             <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} style={{ borderRadius: 12, padding: 8, fontSize: 16 }}>
                                 <option value="">Todos los tipos</option>
                                 {allTypes.map(type => (

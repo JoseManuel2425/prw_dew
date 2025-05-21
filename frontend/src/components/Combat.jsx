@@ -260,7 +260,9 @@ function Combat() {
     console.log(`→ Daño calculado: ${Math.round(damage)}`);
 
     const roundedDamage = Math.round(damage);
-    addToCombatLog(`${yourPokemon.name} usó ${moveName} e infligió ${roundedDamage} de daño a ${randomPokemon.name}.`);
+    addToCombatLog(
+      `<span style="color:green;font-weight:bold">${yourPokemon.name}</span> usó <span style="color:blue;font-weight:bold">${moveName}</span> e infligió <span style="color:red;font-weight:bold">${roundedDamage}</span> de daño a <span style="color:gold;font-weight:bold">${randomPokemon.name}</span>.`
+    );
 
     setWildPokemonHP(prevHP => {
       const newHP = Math.max(prevHP - Math.round(damage), 0);
@@ -298,7 +300,9 @@ function Combat() {
         setPlayerPokemonHP(newTeamHP[activePokemonIndex]);
         setTeamHP(newTeamHP);
 
-        addToCombatLog(`${currentPokemon.name} subió al nivel ${currentPokemon.level}!`);
+        addToCombatLog(
+          `<span style="color:green;font-weight:bold">${currentPokemon.name}</span> subió al nivel <span style="color:purple;font-weight:bold">${currentPokemon.level}</span>!`
+        );
 
         // --- EVOLUCIÓN ---
         (async () => {
@@ -307,7 +311,9 @@ function Combat() {
           setTeam(updatedTeam);
 
           if (evolvedPokemon.name !== currentPokemon.name) {
-            addToCombatLog(`${currentPokemon.name} evolucionó a ${evolvedPokemon.name}!`);
+            addToCombatLog(
+              `<span style="color:green;font-weight:bold">${currentPokemon.name}</span> evolucionó a <span style="color:orange;font-weight:bold">${evolvedPokemon.name}</span>!`
+            );
           }
         })();
 
@@ -353,7 +359,9 @@ function Combat() {
     }
 
     const roundedDamage = Math.round(damage);
-    addToCombatLog(`${randomPokemon.name} usó ${move} e infligió ${roundedDamage} de daño a ${playerPokemon.name}.`);
+    addToCombatLog(
+      `<span style="color:gold;font-weight:bold">${randomPokemon.name}</span> usó <span style="color:blue;font-weight:bold">${move}</span> e infligió <span style="color:red;font-weight:bold">${roundedDamage}</span> de daño a <span style="color:green;font-weight:bold">${playerPokemon.name}</span>.`
+    );
 
     console.log(`El Pokémon salvaje usó ${move}`);
     console.log(`→ Daño infligido al jugador: ${Math.round(damage)}`);
@@ -409,7 +417,9 @@ function Combat() {
       const roundedDamage = Math.round(damage);
       const updatedPlayerHP = Math.max(teamHP[activePokemonIndex] - roundedDamage, 0);
 
-      addToCombatLog(`${randomPokemon.name} usó ${move} e infligió ${roundedDamage} de daño a ${playerPokemon.name}.`);
+      addToCombatLog(
+        `<span style="color:gold;font-weight:bold">${randomPokemon.name}</span> usó <span style="color:blue;font-weight:bold">${move}</span> e infligió <span style="color:red;font-weight:bold">${roundedDamage}</span> de daño a <span style="color:green;font-weight:bold">${playerPokemon.name}</span>.`
+      );
       applyDamageToPlayer(roundedDamage);
 
       // Solo ataca si sigue vivo
@@ -651,7 +661,8 @@ function Combat() {
           ) : (
             <ul style={{ paddingLeft: '20px', margin: 0 }}>
               {combatLog.map((entry, i) => (
-                <li key={i} style={{ marginBottom: '6px' }}>{entry}</li>
+                <li key={i} style={{ marginBottom: '6px' }}
+                  dangerouslySetInnerHTML={{ __html: entry }} />
               ))}
             </ul>
           )}
@@ -684,7 +695,9 @@ function Combat() {
                     const maxHP = team[activePokemonIndex].stats.hp;
                     newTeamHP[activePokemonIndex] = maxHP;
                     setTeamHP(newTeamHP);
-                    addToCombatLog(`${team[activePokemonIndex].name} ha sido curado al máximo.`);
+                    addToCombatLog(
+                      `<span style="color:green;font-weight:bold">${team[activePokemonIndex].name}</span> ha sido curado al máximo.`
+                    );
                     setShowItemSelection(false);
                     generateRandomPokemon();
                   }}
@@ -695,7 +708,9 @@ function Combat() {
                   style={buttonStyle}
                   onClick={() => {
                     setInventory(inv => ({ ...inv, pokeball: inv.pokeball + 1 }));
-                    addToCombatLog("¡Has recibido una Pokéball!");
+                    addToCombatLog(
+                      `¡Has recibido una <span style="color:#b71c1c;font-weight:bold">Pokéball</span>!`
+                    );
                     setShowItemSelection(false);
                     generateRandomPokemon();
                   }}
@@ -739,7 +754,9 @@ function Combat() {
               // Lógica de captura simple (puedes mejorarla)
               const success = Math.random() < 0.5; // 50% de probabilidad
               if (success) {
-                addToCombatLog(`¡Capturaste a ${randomPokemon.name}!`);
+                addToCombatLog(
+                  `¡Capturaste a <span style="color:gold;font-weight:bold">${randomPokemon.name}</span>!`
+                );
                 setShowItemSelection(false);
 
                 // Si el equipo tiene menos de 6, añade el Pokémon capturado
@@ -775,7 +792,9 @@ function Combat() {
 
                 generateRandomPokemon();
               } else {
-                addToCombatLog(`¡${randomPokemon.name} escapó de la Pokéball!`);
+                addToCombatLog(
+                  `¡<span style="color:gold;font-weight:bold">${randomPokemon.name}</span> escapó de la Pokéball!`
+                );
                 await wildAttack(team[activePokemonIndex]);
               }
             }}
