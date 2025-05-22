@@ -110,11 +110,8 @@ function Combat() {
   function replaceMove(pokemon, moveIndex, newMove) {
     const updatedTeam = [...team];
     const poke = { ...pokemon };
-    poke.moves = [...poke.moves];
-    poke.moves[moveIndex] = {
-      move: { name: newMove },
-      version_group_details: []
-    };
+    poke.equippedMoves = [...poke.equippedMoves];
+    poke.equippedMoves[moveIndex] = { move: { name: newMove }, version_group_details: [] };
     updatedTeam[team.indexOf(pokemon)] = poke;
     setTeam(updatedTeam);
     setMoveLearning(null);
@@ -124,8 +121,6 @@ function Combat() {
   async function checkForNewMoves(pokemon) {
     const res = await fetch(`http://localhost:8000/pokemon/${pokemon.name}`);
     const data = await res.json();
-
-    // Movimientos que se aprenden exactamente al nivel actual
     const newMoves = data.moves.filter(
       (move) =>
         move.version_group_details.some(
@@ -134,38 +129,20 @@ function Combat() {
             detail.level_learned_at === pokemon.level
         )
     );
-
-    // Obtén SOLO los 4 movimientos equipados actuales
-    const equippedMoves = pokemon.moves.slice(0, 4);
-    const currentMoveNames = equippedMoves.map(m =>
-      typeof m === "string"
-        ? m
-        : m.move?.name || m.name || ""
-    );
-
-    console.log("Movimientos nuevos posibles:", newMoves.map(m => m.move.name));
-    console.log("Movimientos actuales:", currentMoveNames);
-
+    const equippedMoves = pokemon.equippedMoves;
+    const currentMoveNames = equippedMoves.map(m => m.move?.name || m.name || "");
     if (newMoves.length > 0) {
       const newMoveName = newMoves[0].move.name;
       if (currentMoveNames.includes(newMoveName)) return;
-
       if (equippedMoves.length < 4) {
-        // Añadir el nuevo movimiento al final de los equipados
         const updatedTeam = [...team];
         const poke = { ...pokemon };
-        poke.moves = [...equippedMoves, { move: { name: newMoveName }, version_group_details: [] }];
-        // Si el Pokémon tenía más de 4 movimientos, añade los demás después
-        if (pokemon.moves.length > 4) {
-          poke.moves = [...poke.moves, ...pokemon.moves.slice(4)];
-        }
+        poke.equippedMoves = [...equippedMoves, { move: { name: newMoveName }, version_group_details: [] }];
         updatedTeam[team.indexOf(pokemon)] = poke;
         setTeam(updatedTeam);
         addToCombatLog(`${poke.name} aprendió ${newMoveName}!`);
         return;
       }
-
-      // Si tiene 4 movimientos, mostrar el modal para reemplazar
       setMoveLearning({ pokemon, newMove: newMoveName });
     }
   }
@@ -197,6 +174,9 @@ function Combat() {
 
         // Calcula los stats reales a partir de los base
         pokemon.stats = calculateActualStats(pokemon.baseStats, level, IVs);
+
+        // Solo los primeros 4 movimientos aprendidos antes del nivel 5 como ataques equipados
+        pokemon.equippedMoves = getMovesBeforeLevel(pokemon.moves, 5).map(name => ({ move: { name }, version_group_details: [] }));
 
         newTeamHP.push(pokemon.stats.hp);
       });
@@ -246,7 +226,9 @@ function Combat() {
             ...pokemon,
             level,
             IVs,
-            stats: realStats
+            stats: realStats,
+            // Solo los primeros 4 movimientos aprendidos antes del nivel 5 como ataques equipados
+            equippedMoves: getMovesBeforeLevel(pokemon.moves, 5).map(name => ({ move: { name }, version_group_details: [] }))
           };
 
           setRandomPokemon(pokemonWithStats);
@@ -330,54 +312,7 @@ function Combat() {
     setWildPokemonHP(prevHP => {
       const newHP = Math.max(prevHP - Math.round(damage), 0);
       if (newHP <= 0) {
-        console.log(`${randomPokemon.name} ha sido derrotado!`);
-
-        // Subir de nivel al Pokémon del jugador
-        const updatedTeam = [...team];
-        let currentPokemon = { ...updatedTeam[activePokemonIndex] };
-
-        const previousLevel = currentPokemon.level;
-        const newLevel = previousLevel + 1; //Cambiar
-
-        currentPokemon.level = newLevel;
-        currentPokemon.stats = calculateActualStats(
-          currentPokemon.baseStats,
-          newLevel,
-          currentPokemon.IVs
-        );
-
-        const newTeamHP = [...teamHP];
-        const previousHP = newTeamHP[activePokemonIndex];
-
-        const previousMaxHP = calculateActualStats(
-          currentPokemon.baseStats,
-          previousLevel,
-          currentPokemon.IVs
-        ).hp;
-
-        const newMaxHP = currentPokemon.stats.hp;
-        const hpIncrement = newMaxHP - previousMaxHP;
-
-        newTeamHP[activePokemonIndex] = Math.min(previousHP + hpIncrement, newMaxHP);
-
-        setPlayerPokemonHP(newTeamHP[activePokemonIndex]);
-        setTeamHP(newTeamHP);
-
-        addToCombatLog(`${currentPokemon.name} subió al nivel ${currentPokemon.level}!`);
-
-        // --- EVOLUCIÓN ---
-        (async () => {
-          const evolvedPokemon = await checkEvolution(currentPokemon);
-          updatedTeam[activePokemonIndex] = evolvedPokemon;
-          setTeam(updatedTeam);
-
-          if (evolvedPokemon.name !== currentPokemon.name) {
-            addToCombatLog(`${currentPokemon.name} evolucionó a ${evolvedPokemon.name}!`);
-          }
-          // Chequea si aprende un nuevo movimiento
-          await checkForNewMoves(updatedTeam[activePokemonIndex]);
-        })();
-
+        handlePlayerDefeatWild();
         setShowItemSelection(true);
       }
       return newHP;
@@ -462,7 +397,7 @@ function Combat() {
       const effectiveness = await fetchEffectiveness(type, playerPokemon.types || []);
       const level = randomPokemon.level || 5;
       const atkCat = damageType === 'special' ? 'special-attack' : 'attack';
-      const defCat = damageType === 'special-defense' ? 'special-defense' : 'defense';
+      const defCat = damageType === 'special' ? 'special-defense' : 'defense';
       const atk = randomPokemon.stats[atkCat];
       const def = playerPokemon.stats[defCat];
       const stab = randomPokemon.types.includes(type) ? 1.5 : 1;
@@ -509,6 +444,64 @@ function Combat() {
     color: 'white',
     transition: 'background-color 0.3s',
   };
+
+  // Maneja el proceso de subir de nivel, evolución y aprendizaje de movimientos tras derrotar al Pokémon salvaje
+  async function handlePlayerDefeatWild() {
+    // Copia el equipo actual
+    const updatedTeam = [...team];
+    let currentPokemon = { ...updatedTeam[activePokemonIndex] };
+    const previousLevel = currentPokemon.level;
+    // Subir de nivel
+    const newLevel = previousLevel + 1;
+    currentPokemon.level = newLevel;
+    currentPokemon.stats = calculateActualStats(
+      currentPokemon.baseStats,
+      newLevel,
+      currentPokemon.IVs
+    );
+    if (!currentPokemon.equippedMoves) {
+      currentPokemon.equippedMoves = [];
+    }
+    addToCombatLog(`${currentPokemon.name} subió al nivel ${currentPokemon.level}!`);
+
+    // --- EVOLUCIÓN ---
+    let evolvedPokemon = await checkEvolution(currentPokemon);
+    // Si evolucionó, copiar equippedMoves y stats
+    if (evolvedPokemon.name !== currentPokemon.name) {
+      evolvedPokemon.equippedMoves = currentPokemon.equippedMoves;
+      evolvedPokemon.stats = currentPokemon.stats;
+      addToCombatLog(`${currentPokemon.name} evolucionó a ${evolvedPokemon.name}!`);
+    }
+    updatedTeam[activePokemonIndex] = evolvedPokemon;
+
+    // Chequea si aprende un nuevo movimiento
+    const res = await fetch(`http://localhost:8000/pokemon/${evolvedPokemon.name}`);
+    const data = await res.json();
+    const newMoves = data.moves.filter(
+      (move) =>
+        move.version_group_details.some(
+          (detail) =>
+            detail.move_learn_method.name === "level-up" &&
+            detail.level_learned_at === evolvedPokemon.level
+        )
+    );
+    const equippedMoves = evolvedPokemon.equippedMoves;
+    const currentMoveNames = equippedMoves.map(m => m.move?.name || m.name || "");
+    if (newMoves.length > 0) {
+      const newMoveName = newMoves[0].move.name;
+      if (!currentMoveNames.includes(newMoveName)) {
+        if (equippedMoves.length < 4) {
+          evolvedPokemon.equippedMoves = [...equippedMoves, { move: { name: newMoveName }, version_group_details: [] }];
+          addToCombatLog(`${evolvedPokemon.name} aprendió ${newMoveName}!`);
+        } else {
+          // Mostrar modal para reemplazo
+          setMoveLearning({ pokemon: evolvedPokemon, newMove: newMoveName });
+        }
+      }
+    }
+    updatedTeam[activePokemonIndex] = evolvedPokemon;
+    setTeam(updatedTeam);
+  }
 
   return (
     <div style={{
@@ -558,30 +551,34 @@ function Combat() {
                 gap: '10px',
                 marginBottom: '20px'
               }}>
-                {getMovesBeforeLevel(team[activePokemonIndex].moves, 5).map(move => (
-                  <button
-                    key={move}
-                    style={{
-                      padding: '8px 14px',
-                      borderRadius: '20px',
-                      border: 'none',
-                      backgroundColor: '#3498db',
-                      color: 'white',
-                      cursor: 'pointer',
-                      fontWeight: '600',
-                      fontSize: '14px',
-                      boxShadow: '0 2px 6px rgba(52, 152, 219, 0.4)',
-                      transition: 'background-color 0.3s',
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.backgroundColor = '#2980b9'}
-                    onMouseLeave={e => e.currentTarget.style.backgroundColor = '#3498db'}
-                    onClick={async () => {
-                      await handleTurn(move, team[activePokemonIndex]);
-                    }}
-                  >
-                    {move}
-                  </button>
-                ))}
+                {team[activePokemonIndex] && Array.isArray(team[activePokemonIndex].equippedMoves) && team[activePokemonIndex].equippedMoves.length > 0 ? (
+                  team[activePokemonIndex].equippedMoves.map((moveObj, idx) => (
+                    <button
+                      key={moveObj.move?.name || moveObj.name || idx}
+                      style={{
+                        padding: '8px 14px',
+                        borderRadius: '20px',
+                        border: 'none',
+                        backgroundColor: '#3498db',
+                        color: 'white',
+                        cursor: 'pointer',
+                        fontWeight: '600',
+                        fontSize: '14px',
+                        boxShadow: '0 2px 6px rgba(52, 152, 219, 0.4)',
+                        transition: 'background-color 0.3s',
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.backgroundColor = '#2980b9'}
+                      onMouseLeave={e => e.currentTarget.style.backgroundColor = '#3498db'}
+                      onClick={async () => {
+                        await handleTurn(moveObj.move?.name || moveObj.name, team[activePokemonIndex]);
+                      }}
+                    >
+                      {moveObj.move?.name || moveObj.name}
+                    </button>
+                  ))
+                ) : (
+                  <span style={{color:'#999'}}>No hay movimientos equipados.</span>
+                )}
               </div>
 
               <button
@@ -670,30 +667,30 @@ function Combat() {
                 <p style={{ fontWeight: '600', color: '#c0392b', marginBottom: '15px', fontSize: '16px' }}>
                   HP: {wildPokemonHP} / {randomPokemon.stats.hp}
                 </p>
-                <h4 style={{ marginBottom: '10px', color: '#7f8c8d' }}>Movimientos aprendidos antes del nivel 5:</h4>
+                <h4 style={{ marginBottom: '10px', color: '#7f8c8d' }}>Movimientos equipados:</h4>
                 <ul style={{ paddingLeft: 0, listStyle: 'none', marginBottom: 0 }}>
-                  {movesBeforeLevel5.length === 0 ? (
-                    <li style={{ fontStyle: 'italic', color: '#999' }}>No tiene movimientos a nivel ≤ 5</li>
-                  ) : (
-                    movesBeforeLevel5.map(move => (
-                      <li
-                        key={move}
-                        style={{
-                          margin: '6px 0',
-                          padding: '6px 12px',
-                          backgroundColor: '#f0f3f5',
-                          borderRadius: '15px',
-                          display: 'inline-block',
-                          cursor: 'default',
-                          fontWeight: '600',
-                          color: '#34495e',
-                          userSelect: 'none'
-                        }}
-                      >
-                        {move}
-                      </li>
-                    ))
-                  )}
+                  {randomPokemon.moves.slice(0, 4).length === 0 ? (
+                      <li style={{ fontStyle: 'italic', color: '#999' }}>No tiene movimientos equipados</li>
+                    ) : (
+                      randomPokemon.moves.slice(0, 4).map((moveObj, idx) => (
+                        <li
+                          key={moveObj.move?.name || moveObj.name || idx}
+                          style={{
+                            margin: '6px 0',
+                            padding: '6px 12px',
+                            backgroundColor: '#f0f3f5',
+                            borderRadius: '15px',
+                            display: 'inline-block',
+                            cursor: 'default',
+                            fontWeight: '600',
+                            color: '#34495e',
+                            userSelect: 'none'
+                          }}
+                        >
+                          {moveObj.move?.name || moveObj.name || moveObj}
+                        </li>
+                      ))
+                    )}
                 </ul>
               </div>
             </div>
@@ -849,6 +846,7 @@ function Combat() {
             Lanzar Pokéball ({inventory.pokeball})
           </button>
         )}
+        {/* Modal de reemplazo de movimientos */}
         {moveLearning && (
           <div style={{
             position: 'fixed',
@@ -869,25 +867,34 @@ function Combat() {
               <h3>{moveLearning.pokemon.name} quiere aprender {moveLearning.newMove}.</h3>
               <p>¿Quieres reemplazar uno de los movimientos actuales?</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '20px' }}>
-                {moveLearning.pokemon.moves.map((moveObj, idx) => (
-                  <button
-                    key={idx}
-                    style={{
-                      padding: '10px 20px',
-                      borderRadius: '10px',
-                      border: 'none',
-                      fontSize: '16px',
-                      fontWeight: 'bold',
-                      cursor: 'pointer',
-                      backgroundColor: '#3498db',
-                      color: 'white',
-                      transition: 'background-color 0.3s',
-                    }}
-                    onClick={() => replaceMove(moveLearning.pokemon, idx, moveLearning.newMove)}
-                  >
-                    Reemplazar {moveObj.move?.name || moveObj}
-                  </button>
-                ))}
+                {(() => {
+                  // Busca el Pokémon en el equipo por nombre
+                  let poke = team.find(p => p.name === moveLearning.pokemon.name);
+                  let moves = poke?.equippedMoves || moveLearning.pokemon.equippedMoves || [];
+                  if (!moves || moves.length === 0) {
+                    return <span style={{color:'#999'}}>No hay movimientos equipados.</span>;
+                  }
+                  return moves.map((moveObj, idx) => (
+                    <button
+                      key={moveObj.move?.name || moveObj.name || idx}
+                      style={{
+                        padding: '10px 20px',
+                        borderRadius: '10px',
+                        border: 'none',
+                        fontSize: '16px',
+                        fontWeight: 'bold',
+                        cursor: 'pointer',
+                        backgroundColor: '#3498db',
+                        color: 'white',
+                        transition: 'background-color 0.3s',
+                      }}
+                      onClick={() => replaceMove(poke || moveLearning.pokemon, idx, moveLearning.newMove)}
+                      disabled={moveObj.move?.name === moveLearning.newMove || moveObj.name === moveLearning.newMove}
+                    >
+                      Reemplazar {moveObj.move?.name || moveObj.name}
+                    </button>
+                  ));
+                })()}
                 <button
                   style={{
                     padding: '10px 20px',
