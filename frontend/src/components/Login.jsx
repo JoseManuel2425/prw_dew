@@ -124,8 +124,7 @@ function Login({ onLogin }) {
           onClick={() => navigate("/register")}
           style={{
             marginTop: 8,
-            // El rojo a la izquierda y el amarillo a la derecha, el rojo en menor medida
-            background: "linear-gradient(90deg, #b71c1c 30%, #ffcb05 100%)",
+            background: "linear-gradient(90deg, #b71c1c 15%, #ffcb05 100%)",
             color: "#222",
             border: "none",
             borderRadius: "8px",
