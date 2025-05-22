@@ -116,7 +116,9 @@ function Combat() {
     updatedTeam[team.indexOf(pokemon)] = poke;
     setTeam(updatedTeam);
     setMoveLearning(null);
-    addToCombatLog(`${poke.name} aprendió ${newMove}!`);
+    addToCombatLog(
+      `<span style="color:green;font-weight:bold">${poke.name}</span> aprendió <span style="color:blue;font-weight:bold">${newMove}</span>!`
+    );
   }
 
   async function checkForNewMoves(pokemon) {
@@ -465,6 +467,9 @@ function Combat() {
     const updatedTeam = [...team];
     let currentPokemon = { ...updatedTeam[activePokemonIndex] };
     const previousLevel = currentPokemon.level;
+    // Guarda el HP máximo anterior antes de subir de nivel
+    const prevMaxHP = currentPokemon.stats.hp;
+    const prevCurrentHP = teamHP[activePokemonIndex];
     // Subir de nivel
     const newLevel = previousLevel + 1;
     currentPokemon.level = newLevel;
@@ -476,7 +481,17 @@ function Combat() {
     if (!currentPokemon.equippedMoves) {
       currentPokemon.equippedMoves = [];
     }
-    addToCombatLog(`${currentPokemon.name} subió al nivel ${currentPokemon.level}!`);
+    // Si el HP estaba al máximo antes de subir de nivel, actualiza el HP actual al nuevo máximo
+    setTeamHP(prevHPs => {
+      const newHPs = [...prevHPs];
+      if (prevCurrentHP === prevMaxHP) {
+        newHPs[activePokemonIndex] = currentPokemon.stats.hp;
+      }
+      return newHPs;
+    });
+    addToCombatLog(
+      `<span style="color:green;font-weight:bold">${currentPokemon.name}</span> subió al nivel <span style="color:purple;font-weight:bold">${currentPokemon.level}</span>!`
+    );
 
     // --- EVOLUCIÓN ---
     let evolvedPokemon = await checkEvolution(currentPokemon);
@@ -484,7 +499,9 @@ function Combat() {
     if (evolvedPokemon.name !== currentPokemon.name) {
       evolvedPokemon.equippedMoves = currentPokemon.equippedMoves;
       evolvedPokemon.stats = currentPokemon.stats;
-      addToCombatLog(`${currentPokemon.name} evolucionó a ${evolvedPokemon.name}!`);
+      addToCombatLog(
+        `<span style="color:green;font-weight:bold">${currentPokemon.name}</span> evolucionó a <span style="color:orange;font-weight:bold">${evolvedPokemon.name}</span>!`
+      );
     }
     updatedTeam[activePokemonIndex] = evolvedPokemon;
 
@@ -506,7 +523,9 @@ function Combat() {
       if (!currentMoveNames.includes(newMoveName)) {
         if (equippedMoves.length < 4) {
           evolvedPokemon.equippedMoves = [...equippedMoves, { move: { name: newMoveName }, version_group_details: [] }];
-          addToCombatLog(`${evolvedPokemon.name} aprendió ${newMoveName}!`);
+          addToCombatLog(
+            `<span style="color:green;font-weight:bold">${evolvedPokemon.name}</span> aprendió <span style="color:blue;font-weight:bold">${newMoveName}</span>!`
+          );
         } else {
           // Mostrar modal para reemplazo
           setMoveLearning({ pokemon: evolvedPokemon, newMove: newMoveName });
