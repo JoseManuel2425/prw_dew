@@ -102,6 +102,7 @@ function Combat() {
   const [showItemSelection, setShowItemSelection] = useState(false);
   const [inventory, setInventory] = useState({ pokeball: 0 });
   const [moveLearning, setMoveLearning] = useState(null); // {pokemon, newMove}
+  const [infoPokemon, setInfoPokemon] = useState(null);
 
   const addToCombatLog = (message) => {
     setCombatLog(prevLog => [...prevLog, message]);
@@ -335,7 +336,7 @@ function Combat() {
 
     const level = randomPokemon.level || 5;
     const atkCat = damageType === 'special' ? 'special-attack' : 'attack';
-    const defCat = damageType === 'special-defense' ? 'special-defense' : 'defense';
+    const defCat = damageType === 'special' ? 'special-defense' : 'defense';
 
     const atk = randomPokemon.stats[atkCat];
     const def = playerPokemon.stats[defCat];
@@ -738,7 +739,8 @@ function Combat() {
                 borderRadius: "12px",
                 width: "260px",
                 backgroundColor: 'white',
-                boxShadow: '0 2px 10px rgba(192, 57, 43, 0.2)'
+                boxShadow: '0 2px 10px rgba(192, 57, 43, 0.2)',
+                position: "relative"
               }}>
                 <img src={randomPokemon.image} alt={randomPokemon.name} style={{ width: '120px', marginBottom: '10px' }} />
                 <p style={{ fontWeight: '700', fontSize: '22px', margin: '8px 0' }}>{randomPokemon.name}</p>
@@ -751,28 +753,48 @@ function Combat() {
                 <h4 style={{ marginBottom: '10px', color: '#7f8c8d' }}>Movimientos equipados:</h4>
                 <ul style={{ paddingLeft: 0, listStyle: 'none', marginBottom: 0 }}>
                   {randomPokemon.moves.slice(0, 4).length === 0 ? (
-                      <li style={{ fontStyle: 'italic', color: '#999' }}>No tiene movimientos equipados</li>
-                    ) : (
-                      randomPokemon.moves.slice(0, 4).map((moveObj, idx) => (
-                        <li
-                          key={moveObj.move?.name || moveObj.name || idx}
-                          style={{
-                            margin: '6px 0',
-                            padding: '6px 12px',
-                            backgroundColor: '#f0f3f5',
-                            borderRadius: '15px',
-                            display: 'inline-block',
-                            cursor: 'default',
-                            fontWeight: '600',
-                            color: '#34495e',
-                            userSelect: 'none'
-                          }}
-                        >
-                          {moveObj.move?.name || moveObj.name || moveObj}
-                        </li>
-                      ))
-                    )}
+                    <li style={{ fontStyle: 'italic', color: '#999' }}>No tiene movimientos equipados</li>
+                  ) : (
+                    randomPokemon.moves.slice(0, 4).map((moveObj, idx) => (
+                      <li
+                        key={moveObj.move?.name || moveObj.name || idx}
+                        style={{
+                          margin: '6px 0',
+                          padding: '6px 12px',
+                          backgroundColor: '#f0f3f5',
+                          borderRadius: '15px',
+                          display: 'inline-block',
+                          cursor: 'default',
+                          fontWeight: '600',
+                          color: '#34495e',
+                          userSelect: 'none'
+                        }}
+                      >
+                        {moveObj.move?.name || moveObj.name || moveObj}
+                      </li>
+                    ))
+                  )}
                 </ul>
+                <button
+                  style={{
+                    position: "absolute",
+                    top: 8,
+                    right: 8,
+                    background: "#3498db", // azul
+                    color: "white",
+                    border: "none",
+                    borderRadius: "50%",
+                    width: 20,           // más pequeño
+                    height: 20,          // más pequeño
+                    fontWeight: "bold",
+                    cursor: "pointer",
+                    fontSize: 13,        // más pequeño
+                    lineHeight: "20px",
+                    padding: 0
+                  }}
+                  title="Ver información del Pokémon salvaje"
+                  onClick={() => setInfoPokemon(randomPokemon)}
+                >i</button>
               </div>
             )}
           </div>
@@ -1032,6 +1054,7 @@ function Combat() {
                 textAlign: "center",
                 border: idx === activePokemonIndex ? "2px solid #ffcb05" : "2px solid #eee",
                 boxShadow: idx === activePokemonIndex ? "0 0 8px #ffcb05" : "0 2px 8px #0002",
+                position: "relative"
               }}
             >
               <img
@@ -1056,10 +1079,92 @@ function Combat() {
               }}>
                 {teamHP[idx]} / {pokemon.stats?.hp || "??"}
               </div>
+              <button
+                style={{
+                  position: "absolute",
+                  top: 4,
+                  right: 4,
+                  background: "#3498db",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "50%",
+                  width: 20,
+                  height: 20,
+                  fontWeight: "bold",
+                  cursor: "pointer",
+                  fontSize: 14,
+                  lineHeight: "20px",
+                  padding: 0
+                }}
+                title="Ver información"
+                onClick={() => setInfoPokemon(pokemon)}
+              >i</button>
             </div>
           ))}
         </div>
       </div>
+      {infoPokemon && (
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 3000,
+        }}>
+          <div style={{
+            backgroundColor: '#fff',
+            padding: '30px',
+            borderRadius: '15px',
+            textAlign: 'center',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+            minWidth: 320
+          }}>
+            <h3 style={{marginBottom: 10}}>{infoPokemon.name}</h3>
+            <img src={infoPokemon.image} alt={infoPokemon.name} style={{width: 80, marginBottom: 10}} />
+            <div style={{marginBottom: 10}}>
+              <b>Nivel:</b> {infoPokemon.level}
+            </div>
+            <div style={{marginBottom: 10}}>
+              <b>IVs:</b>
+              <pre style={{
+                background: "#f5f5f5",
+                borderRadius: 8,
+                padding: 8,
+                textAlign: "left",
+                fontSize: 13,
+                margin: "6px 0"
+              }}>{JSON.stringify(infoPokemon.IVs, null, 2)}</pre>
+            </div>
+            <div style={{marginBottom: 10}}>
+              <b>Stats reales:</b>
+              <pre style={{
+                background: "#f5f5f5",
+                borderRadius: 8,
+                padding: 8,
+                textAlign: "left",
+                fontSize: 13,
+                margin: "6px 0"
+              }}>{JSON.stringify(infoPokemon.stats, null, 2)}</pre>
+            </div>
+            <button
+              style={{
+                marginTop: 10,
+                padding: "8px 24px",
+                borderRadius: 8,
+                border: "none",
+                background: "#e74c3c",
+                color: "white",
+                fontWeight: "bold",
+                fontSize: 15,
+                cursor: "pointer"
+              }}
+              onClick={() => setInfoPokemon(null)}
+            >Cerrar</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
