@@ -55,7 +55,12 @@ function Pokedex({ user, setUser, pokemonList, loadingPokemons }) {
     }, []);
 
     const allTypes = Array.from(new Set(pokemonList.flatMap(p => p.types || [])));
-    const allGenerations = Array.from(new Set(pokemonList.map(p => p.generation))).sort();
+    const allGenerations = Array.from(new Set(pokemonList.map(p => p.generation)))
+        .sort((a, b) => {
+            const numA = parseInt(a.replace('generation-', ''));
+            const numB = parseInt(b.replace('generation-', ''));
+            return numA - numB;
+        });
 
     const addToTeam = (pokemon) => {
         if (team.length < 6 && !team.some(p => p.name === pokemon.name)) {
