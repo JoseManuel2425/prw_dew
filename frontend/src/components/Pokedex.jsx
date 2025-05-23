@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 function getResponsiveGrid() {
@@ -17,6 +17,14 @@ function Pokedex({ user, setUser, pokemonList, loadingPokemons }) {
     const [page, setPage] = useState(1);
     const [gridConfig, setGridConfig] = useState(getResponsiveGrid());
     const navigate = useNavigate();
+
+    //Botones
+    const combateBtnRef = useRef(null);
+    const aleatorioBtnRef = useRef(null);
+    const typeFilterRef = useRef(null);
+    const genFilterRef = useRef(null);
+    const anteriorBtnRef = useRef(null);
+    const siguienteBtnRef = useRef(null);
 
     // Traduccion de tipos
     const TYPE_TRANSLATIONS = {
@@ -108,16 +116,20 @@ function Pokedex({ user, setUser, pokemonList, loadingPokemons }) {
         (e) => {
             if (!user) return;
 
-            // Cambiar foco con Tab
-            if (e.key === "Tab") {
-                e.preventDefault();
-                if (focusArea === "grid" && team.length > 0) {
-                    setFocusArea("team");
-                    setSelectedTeamIndex(0);
-                } else {
-                    setFocusArea("grid");
-                }
+            // Si el foco está en un control nativo, NO interceptar Tab ni flechas
+            const tag = document.activeElement.tagName;
+            if (
+                tag === "BUTTON" ||
+                tag === "SELECT" ||
+                tag === "INPUT" ||
+                tag === "TEXTAREA"
+            ) {
                 return;
+            }
+
+            // Cambiar foco con Tab SOLO para navegación personalizada
+            if (e.key === "Tab") {
+                return; // NO interceptar, deja que el navegador haga el tabulado normal
             }
 
             // --- Selector en cuadrícula principal ---
@@ -458,20 +470,21 @@ function Pokedex({ user, setUser, pokemonList, loadingPokemons }) {
                         </div>
                         <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
                             <button
+                                ref={combateBtnRef}
+                                tabIndex={0}
                                 onClick={() => navigate("/combat", { state: { team } })}
                                 style={{ background: "#ffcb05", border: "none", borderRadius: 12, padding: "12px 20px", fontWeight: "bold", cursor: "pointer" }}
                             >
                                 Ir a Combate
                             </button>
                             <button
+                                ref={aleatorioBtnRef}
+                                tabIndex={0}
                                 onClick={() => {
-                                    // Selecciona entre 3 y 6 Pokémon aleatorios de la lista filtrada
                                     const min = 3;
                                     const max = 6;
                                     const count = Math.floor(Math.random() * (max - min + 1)) + min;
-                                    // Filtra para evitar duplicados y pokémon ya en el equipo
                                     const available = pokemonList.filter(p => !team.some(tp => tp.name === p.name));
-                                    // Baraja el array
                                     const shuffled = [...available].sort(() => 0.5 - Math.random());
                                     const randomTeam = shuffled.slice(0, count);
                                     navigate("/combat", { state: { team: randomTeam } });
@@ -488,7 +501,14 @@ function Pokedex({ user, setUser, pokemonList, loadingPokemons }) {
                             >
                                 Equipo Aleatorio
                             </button>
-                            <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} style={{ borderRadius: 12, padding: 8, fontSize: 16 }}>
+                            <select
+                                ref={typeFilterRef}
+                                tabIndex={0}
+                                value={typeFilter}
+                                onChange={e => setTypeFilter(e.target.value)}
+                                style={{ borderRadius: 12, padding: 8, fontSize: 16 }}
+                                aria-label="Filtrar por tipo"
+                            >
                                 <option value="">Todos los tipos</option>
                                 {allTypes.map(type => (
                                     <option key={type} value={type}>
@@ -496,7 +516,14 @@ function Pokedex({ user, setUser, pokemonList, loadingPokemons }) {
                                     </option>
                                 ))}
                             </select>
-                            <select value={generationFilter} onChange={e => setGenerationFilter(e.target.value)} style={{ borderRadius: 12, padding: 8, fontSize: 16 }}>
+                            <select
+                                ref={genFilterRef}
+                                tabIndex={0}
+                                value={generationFilter}
+                                onChange={e => setGenerationFilter(e.target.value)}
+                                style={{ borderRadius: 12, padding: 8, fontSize: 16 }}
+                                aria-label="Filtrar por generación"
+                            >
                                 <option value="">Todas las generaciones</option>
                                 {allGenerations.map(gen => (
                                     <option key={gen} value={gen}>{gen.replace('generation-', 'Gen ')}</option>
@@ -518,6 +545,8 @@ function Pokedex({ user, setUser, pokemonList, loadingPokemons }) {
                         {paginatedPokemons.map((pokemon, idx) => (
                             <div
                                 key={pokemon.name}
+                                tabIndex={0}
+                                aria-label={`Pokémon ${pokemon.name}`}
                                 style={{
                                     width: 90,
                                     height: 90,
@@ -535,6 +564,10 @@ function Pokedex({ user, setUser, pokemonList, loadingPokemons }) {
                                 }}
                                 onClick={() => addToTeam(pokemon)}
                                 onMouseEnter={() => {
+                                    setFocusArea("grid");
+                                    setSelectedIndex(idx);
+                                }}
+                                onFocus={() => {
                                     setFocusArea("grid");
                                     setSelectedIndex(idx);
                                 }}
@@ -556,6 +589,8 @@ function Pokedex({ user, setUser, pokemonList, loadingPokemons }) {
                     {/* Paginación */}
                     <div style={{ display: "flex", justifyContent: "center", marginTop: 24, gap: 16, flexWrap: "wrap" }}>
                         <button
+                            ref={anteriorBtnRef}
+                            tabIndex={0}
                             onClick={() => setPage(page - 1)}
                             disabled={page === 1}
                             style={{
@@ -574,6 +609,8 @@ function Pokedex({ user, setUser, pokemonList, loadingPokemons }) {
                             Página {page} de {totalPages}
                         </span>
                         <button
+                            ref={siguienteBtnRef}
+                            tabIndex={0}
                             onClick={() => setPage(page + 1)}
                             disabled={page === totalPages}
                             style={{

@@ -196,12 +196,18 @@ function Combat() {
       newHPs[activePokemonIndex] = Math.max(newHPs[activePokemonIndex] - damage, 0);
 
       if (newHPs[activePokemonIndex] <= 0) {
-        const allFainted = newHPs.every(hp => hp <= 0);
-        if (newHPs[activePokemonIndex] == 0) {
-          setShowTeamSelection(true);
-        } else if (allFainted) {
-          console.log("Todos los Pokémon del jugador han sido derrotados");
-        }
+        // Elimina el Pokémon desmayado del equipo y de los arrays relacionados
+        setTeam(prevTeam => {
+          const updatedTeam = prevTeam.filter((_, idx) => idx !== activePokemonIndex);
+          // Ajusta el índice activo si es necesario
+          setActivePokemonIndex(idx => Math.max(0, idx - (idx === prevTeam.length - 1 ? 1 : 0)));
+          return updatedTeam;
+        });
+        setTeamHP(prev => prev.filter((_, idx) => idx !== activePokemonIndex));
+        // Si el equipo queda vacío, no mostrar selección
+        setShowTeamSelection(false);
+      } else if (newHPs.every(hp => hp <= 0)) {
+        console.log("Todos los Pokémon del jugador han sido derrotados");
       }
 
       return newHPs;
