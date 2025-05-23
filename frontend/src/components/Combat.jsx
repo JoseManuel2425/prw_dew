@@ -308,7 +308,7 @@ function Combat() {
 
     const roundedDamage = Math.round(damage);
     addToCombatLog(
-      `<span style="color:green;font-weight:bold">${yourPokemon.name}</span> usó <span style="color:blue;font-weight:bold">${moveName}</span> e infligió <span style="color:red;font-weight:bold">${roundedDamage}</span> de daño a <span style="color:gold;font-weight:bold">${randomPokemon.name}</span>.`
+      `<span style="color:green;font-weight:bold">${yourPokemon.name}</span> usó <span style="color:blue;font-weight:bold">${moveName}</span> e infligió <span style="color:red;font-weight:bold">${roundedDamage}</span> de daño a <span style="color:orange;font-weight:bold">${randomPokemon.name}</span>.`
     );
 
     setWildPokemonHP(prevHP => {
@@ -358,7 +358,7 @@ function Combat() {
 
     const roundedDamage = Math.round(damage);
     addToCombatLog(
-      `<span style="color:gold;font-weight:bold">${randomPokemon.name}</span> usó <span style="color:blue;font-weight:bold">${move}</span> e infligió <span style="color:red;font-weight:bold">${roundedDamage}</span> de daño a <span style="color:green;font-weight:bold">${playerPokemon.name}</span>.`
+      `<span style="color:orange;font-weight:bold">${randomPokemon.name}</span> usó <span style="color:blue;font-weight:bold">${move}</span> e infligió <span style="color:red;font-weight:bold">${roundedDamage}</span> de daño a <span style="color:green;font-weight:bold">${playerPokemon.name}</span>.`
     );
 
     console.log(`El Pokémon salvaje usó ${move}`);
@@ -416,7 +416,7 @@ function Combat() {
       const updatedPlayerHP = Math.max(teamHP[activePokemonIndex] - roundedDamage, 0);
 
       addToCombatLog(
-        `<span style="color:gold;font-weight:bold">${randomPokemon.name}</span> usó <span style="color:blue;font-weight:bold">${move}</span> e infligió <span style="color:red;font-weight:bold">${roundedDamage}</span> de daño a <span style="color:green;font-weight:bold">${playerPokemon.name}</span>.`
+        `<span style="color:orange;font-weight:bold">${randomPokemon.name}</span> usó <span style="color:blue;font-weight:bold">${move}</span> e infligió <span style="color:red;font-weight:bold">${roundedDamage}</span> de daño a <span style="color:green;font-weight:bold">${playerPokemon.name}</span>.`
       );
       applyDamageToPlayer(roundedDamage);
 
@@ -570,12 +570,13 @@ function Combat() {
         {/* Historial de combate */}
         <div style={{
           width: '300px',
-          backgroundColor: '#ededed', // Gris claro para tarjeta
+          backgroundColor: '#ededed',
           color: '#222',
           padding: '15px',
           borderRadius: '10px',
           boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
           maxHeight: '600px',
+          minHeight: '600px',
           overflowY: 'auto',
           fontSize: '14px'
         }}>
@@ -606,130 +607,133 @@ function Combat() {
             border: "2px solid #b71c1c",
             padding: "15px",
             borderRadius: "12px",
-            width: "220px",
-            backgroundColor: '#ededed', // Gris claro para tarjeta
+            width: "260px", // <-- Igual que el rival
+            minHeight: "420px", // <-- Igual que el rival
+            backgroundColor: '#ededed',
             color: '#222',
-            boxShadow: '0 2px 8px rgba(183,28,28,0.08)'
+            boxShadow: '0 2px 8px rgba(183,28,28,0.08)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'flex-start'
           }}>
             <img
               src={team[activePokemonIndex].image}
               alt={team[activePokemonIndex].name}
-              style={{ width: '100px', marginBottom: '10px' }}
+              style={{ width: '120px', marginBottom: '10px' }}
             />
-            <p style={{ fontWeight: '700', fontSize: '20px', margin: '5px 0' }}>
+            <p style={{ fontWeight: '700', fontSize: '22px', margin: '8px 0' }}>
               {team[activePokemonIndex].name}
             </p>
-            <p style={{ fontWeight: '600', margin: '5px 0', color: '#27ae60' }}>
+            <p style={{ fontWeight: '600', margin: '5px 0', color: '#27ae60', fontSize: '16px' }}>
               HP: {teamHP[activePokemonIndex]} / {team[activePokemonIndex].stats?.hp || '??'}
             </p>
-
-              <h4 style={{ marginTop: '20px', marginBottom: '10px', color: '#34495e' }}>
-                Nivel: {team[activePokemonIndex].level}
-              </h4>
-              <div style={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                justifyContent: 'center',
-                gap: '10px',
-                marginBottom: '20px'
-              }}>
-                {team[activePokemonIndex] && Array.isArray(team[activePokemonIndex].equippedMoves) && team[activePokemonIndex].equippedMoves.length > 0 ? (
-                  team[activePokemonIndex].equippedMoves.map((moveObj, idx) => (
-                    <button
-                      key={moveObj.move?.name || moveObj.name || idx}
-                      style={{
-                        padding: '8px 14px',
-                        borderRadius: '20px',
-                        border: 'none',
-                        backgroundColor: '#3498db',
-                        color: 'white',
-                        cursor: 'pointer',
-                        fontWeight: '600',
-                        fontSize: '14px',
-                        boxShadow: '0 2px 6px rgba(52, 152, 219, 0.4)',
-                        transition: 'background-color 0.3s',
-                      }}
-                      onMouseEnter={e => e.currentTarget.style.backgroundColor = '#2980b9'}
-                      onMouseLeave={e => e.currentTarget.style.backgroundColor = '#3498db'}
-                      onClick={async () => {
-                        await handleTurn(moveObj.move?.name || moveObj.name, team[activePokemonIndex]);
-                      }}
-                    >
-                      {moveObj.move?.name || moveObj.name}
-                    </button>
-                  ))
-                ) : (
-                  <span style={{color:'#999'}}>No hay movimientos equipados.</span>
-                )}
-              </div>
-
-                <button
-                  onClick={() => setShowTeamSelection(true)}
+            <h4 style={{ marginTop: '20px', marginBottom: '10px', color: '#34495e' }}>
+              Nivel: {team[activePokemonIndex].level}
+            </h4>
+            <div style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              justifyContent: 'center',
+              gap: '10px',
+              marginBottom: '20px'
+            }}>
+              {team[activePokemonIndex] && Array.isArray(team[activePokemonIndex].equippedMoves) && team[activePokemonIndex].equippedMoves.length > 0 ? (
+                team[activePokemonIndex].equippedMoves.map((moveObj, idx) => (
+                  <button
+                    key={moveObj.move?.name || moveObj.name || idx}
+                    style={{
+                      padding: '8px 14px',
+                      borderRadius: '20px',
+                      border: 'none',
+                      backgroundColor: '#3498db',
+                      color: 'white',
+                      cursor: 'pointer',
+                      fontWeight: '600',
+                      fontSize: '14px',
+                      boxShadow: '0 2px 6px rgba(52, 152, 219, 0.4)',
+                      transition: 'background-color 0.3s',
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.backgroundColor = '#2980b9'}
+                    onMouseLeave={e => e.currentTarget.style.backgroundColor = '#3498db'}
+                    onClick={async () => {
+                      await handleTurn(moveObj.move?.name || moveObj.name, team[activePokemonIndex]);
+                    }}
+                  >
+                    {moveObj.move?.name || moveObj.name}
+                  </button>
+                ))
+              ) : (
+                <span style={{color:'#999'}}>No hay movimientos equipados.</span>
+              )}
+            </div>
+            <button
+              onClick={() => setShowTeamSelection(true)}
+              style={{
+                padding: '10px 25px',
+                borderRadius: '25px',
+                border: 'none',
+                backgroundColor: '#e67e22',
+                color: 'white',
+                fontWeight: '700',
+                cursor: 'pointer',
+                fontSize: '16px',
+                boxShadow: '0 2px 8px rgba(230, 126, 34, 0.5)',
+                transition: 'background-color 0.3s',
+                display: 'block',
+                margin: '0 auto'
+              }}
+              onMouseEnter={e => e.currentTarget.style.backgroundColor = '#d35400'}
+              onMouseLeave={e => e.currentTarget.style.backgroundColor = '#e67e22'}
+            >
+              Cambio
+            </button>
+          </div>
+        ) : (
+          <div style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            justifyContent: 'center',
+            gap: '15px',
+            marginBottom: '30px',
+            backgroundColor: '#ededed', // Gris claro para tarjeta
+            borderRadius: 12,
+            padding: 16
+          }}>
+            {team.map((pokemon, index) => {
+              if (index === activePokemonIndex || teamHP[index] <= 0) return null;
+              return (
+                <div
+                  key={pokemon.name}
                   style={{
-                    padding: '10px 25px',
-                    borderRadius: '25px',
-                    border: 'none',
-                    backgroundColor: '#e67e22',
-                    color: 'white',
-                    fontWeight: '700',
-                    cursor: 'pointer',
-                    fontSize: '16px',
-                    boxShadow: '0 2px 8px rgba(230, 126, 34, 0.5)',
-                    transition: 'background-color 0.3s',
-                    display: 'block',
-                    margin: '0 auto'
+                    border: "1px solid #ccc",
+                    padding: "10px",
+                    borderRadius: "8px",
+                    width: "180px",
+                    cursor: "pointer",
+                    margin: "10px auto"
                   }}
-                  onMouseEnter={e => e.currentTarget.style.backgroundColor = '#d35400'}
-                  onMouseLeave={e => e.currentTarget.style.backgroundColor = '#e67e22'}
-                >
-                  Cambio
-                </button>
-              </div>
-            ) : (
-              <div style={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                justifyContent: 'center',
-                gap: '15px',
-                marginBottom: '30px',
-                backgroundColor: '#ededed', // Gris claro para tarjeta
-                borderRadius: 12,
-                padding: 16
-              }}>
-                {team.map((pokemon, index) => {
-                  if (index === activePokemonIndex || teamHP[index] <= 0) return null;
-                  return (
-                    <div
-                      key={pokemon.name}
-                      style={{
-                        border: "1px solid #ccc",
-                        padding: "10px",
-                        borderRadius: "8px",
-                        width: "180px",
-                        cursor: "pointer",
-                        margin: "10px auto"
-                      }}
-                      onClick={async () => {
-                        setActivePokemonIndex(index);
-                        setShowTeamSelection(false);
+                  onClick={async () => {
+                    setActivePokemonIndex(index);
+                    setShowTeamSelection(false);
 
-                        if (isManualSwitch) {
-                          setIsManualSwitch(false);
-                          await new Promise(resolve => setTimeout(resolve, 100));
-                          await wildAttack(team[index]);
-                        }
-                      }}
-                    >
-                      <img src={pokemon.image} alt={pokemon.name} style={{ width: '80px' }} />
-                      <p>{pokemon.name}</p>
-                      <p>HP: {teamHP[index]} / {pokemon.stats?.hp || '??'}</p>
-                    </div>
-                  );
-                })}
-                <button onClick={() => setShowTeamSelection(false)} style={{ marginTop: "20px" }}>
-                  Volver
-                </button>
-              </div>
+                    if (isManualSwitch) {
+                      setIsManualSwitch(false);
+                      await new Promise(resolve => setTimeout(resolve, 100));
+                      await wildAttack(team[index]);
+                    }
+                  }}
+                >
+                  <img src={pokemon.image} alt={pokemon.name} style={{ width: '80px' }} />
+                  <p>{pokemon.name}</p>
+                  <p>HP: {teamHP[index]} / {pokemon.stats?.hp || '??'}</p>
+                </div>
+              );
+            })}
+            <button onClick={() => setShowTeamSelection(false)} style={{ marginTop: "20px" }}>
+              Volver
+            </button>
+          </div>
         )}
         {/* Pokémon Rival */}
         {randomPokemon && (
@@ -737,12 +741,17 @@ function Combat() {
             border: "2px solid #b71c1c",
             padding: "15px",
             borderRadius: "12px",
-            width: "260px",
-            backgroundColor: '#ededed', // Gris claro para tarjeta
+            width: "260px", // <-- Igual que el propio
+            minHeight: "420px", // <-- Igual que el propio
+            backgroundColor: '#ededed',
             color: '#222',
             boxShadow: '0 2px 10px rgba(183,28,28,0.12)',
             position: "relative",
-            marginLeft: '60px' // Desplaza el Pokémon rival más a la derecha
+            marginLeft: '60px',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'flex-start'
           }}>
             <img src={randomPokemon.image} alt={randomPokemon.name} style={{ width: '120px', marginBottom: '10px' }} />
             <p style={{ fontWeight: '700', fontSize: '22px', margin: '8px 0' }}>{randomPokemon.name}</p>
@@ -752,30 +761,7 @@ function Combat() {
             <p style={{ fontWeight: '600', color: '#c0392b', marginBottom: '15px', fontSize: '16px' }}>
               HP: {wildPokemonHP} / {randomPokemon.stats.hp}
             </p>
-            <h4 style={{ marginBottom: '10px', color: '#7f8c8d' }}>Movimientos equipados:</h4>
-            <ul style={{ paddingLeft: 0, listStyle: 'none', marginBottom: 0 }}>
-              {randomPokemon.moves.slice(0, 4).length === 0
-                ? <li style={{ fontStyle: 'italic', color: '#999' }}>No tiene movimientos equipados</li>
-                : randomPokemon.moves.slice(0, 4).map((moveObj, idx) => (
-                    <li
-                      key={moveObj.move?.name || moveObj.name || idx}
-                      style={{
-                        margin: '6px 0',
-                        padding: '6px 12px',
-                        backgroundColor: '#f0f3f5',
-                        borderRadius: '15px',
-                        display: 'inline-block',
-                        cursor: 'default',
-                        fontWeight: '600',
-                        color: '#34495e',
-                        userSelect: 'none'
-                      }}
-                    >
-                      {moveObj.move?.name || moveObj.name || moveObj}
-                    </li>
-                  ))
-              }
-            </ul>
+            {/* NO mostrar movimientos del rival */}
             <button
               style={{
                 position: "absolute",
@@ -931,7 +917,7 @@ function Combat() {
               const success = Math.random() < 0.5; // 50% de probabilidad
               if (success) {
                 addToCombatLog(
-                  `¡Capturaste a <span style="color:gold;font-weight:bold">${randomPokemon.name}</span>!`
+                  `¡Capturaste a <span style="color:orange;font-weight:bold">${randomPokemon.name}</span>!`
                 );
                 setShowItemSelection(false);
 
@@ -967,7 +953,7 @@ function Combat() {
                 generateRandomPokemon();
               } else {
                 addToCombatLog(
-                  `¡<span style="color:gold;font-weight:bold">${randomPokemon.name}</span> escapó de la Pokéball!`
+                  `¡<span style="color:orange;font-weight:bold">${randomPokemon.name}</span> escapó de la Pokéball!`
                 );
                 await wildAttack(team[activePokemonIndex]);
               }
