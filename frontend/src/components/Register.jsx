@@ -127,7 +127,7 @@ function Register({ onRegister }) {
         <button
           onClick={handleRegister}
           style={{
-            background: "linear-gradient(90deg, #ffcb05 60%, #b71c1c 100%)",
+            background: "#ffcb05", // <-- Solo amarillo
             color: "#222",
             border: "none",
             borderRadius: "8px",
@@ -145,8 +145,7 @@ function Register({ onRegister }) {
           onClick={() => navigate("/login")}
           style={{
             marginTop: 16,
-            // El rojo a la izquierda y el amarillo a la derecha, el rojo en menor medida
-            background: "linear-gradient(90deg, #b71c1c 15%, #ffcb05 100%)",
+            background: "#ffcb05", // <-- Solo amarillo
             color: "#222",
             border: "none",
             borderRadius: "8px",
