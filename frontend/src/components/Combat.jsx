@@ -103,6 +103,8 @@ function Combat() {
   const [inventory, setInventory] = useState({ pokeball: 0 });
   const [moveLearning, setMoveLearning] = useState(null); // {pokemon, newMove}
   const [infoPokemon, setInfoPokemon] = useState(null);
+  const [showTeamMobile, setShowTeamMobile] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
 
   const addToCombatLog = (message) => {
     setCombatLog(prevLog => [...prevLog, message]);
@@ -545,6 +547,12 @@ function Combat() {
     setTeam(updatedTeam);
   }
 
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 900);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   return (
     <div style={{
       maxWidth: '1200px',
@@ -556,7 +564,10 @@ function Combat() {
       borderRadius: '12px',
       boxShadow: '0 4px 10px rgba(0,0,0,0.3)',
       position: 'relative',
-      minHeight: '700px' // Asegura espacio para el log completo
+      minHeight: '700px',
+      display: 'flex',
+      flexDirection: 'column', // SIEMPRE column
+      alignItems: 'center'
     }}>
       <h2 style={{
         color: '#ffcb05',
@@ -566,57 +577,36 @@ function Combat() {
         textShadow: '1px 2px 8px #000'
       }}>¡Combate Pokémon!</h2>
 
-      <div style={{ display: 'flex', gap: '30px', alignItems: 'flex-start' }}>
-        {/* Historial de combate */}
-        <div style={{
-          width: '300px',
-          backgroundColor: '#ededed',
-          color: '#222',
-          padding: '15px',
-          borderRadius: '10px',
-          boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
-          maxHeight: '600px',
-          minHeight: '600px',
-          overflowY: 'auto',
-          fontSize: '14px'
-        }}>
-          <div style={{
-            fontWeight: 'bold',
-            fontSize: '1.2em',
-            color: '#2c3e50',
-            marginBottom: '10px',
-            textAlign: 'left'
-          }}>
-            Turno actual: {turn}
-          </div>
-          <h4 style={{ marginBottom: '10px', color: '#2c3e50' }}>Historial del combate:</h4>
-          {combatLog.length === 0 ? (
-            <p style={{ color: '#999' }}><i>Aún no hay acciones.</i></p>
-          ) : (
-            <ul style={{ paddingLeft: '20px', margin: 0 }}>
-              {combatLog.slice().reverse().map((entry, i) => (
-                <li key={i} style={{ marginBottom: '6px', listStyle: 'none' }}
-                  dangerouslySetInnerHTML={{ __html: entry }} />
-              ))}
-            </ul>
-          )}
-        </div>
-        {/* Tu Pokémon */}
+      {/* CONTENEDOR SUPERIOR: Pokémons */}
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'row', // SIEMPRE row, incluso en móvil
+          gap: isMobile ? 20 : 60,
+          alignItems: 'flex-start',
+          justifyContent: 'center',
+          width: '100%',
+          marginBottom: isMobile ? 24 : 0
+        }}
+      >
+        {/* Tu Pokémon o selección */}
         {!showTeamSelection ? (
           <div style={{
             border: "2px solid #b71c1c",
             padding: "15px",
             borderRadius: "12px",
-            width: "260px", // <-- Igual que el rival
-            minHeight: "420px", // <-- Igual que el rival
+            width: "260px",
+            minHeight: "420px",
             backgroundColor: '#ededed',
             color: '#222',
             boxShadow: '0 2px 8px rgba(183,28,28,0.08)',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            justifyContent: 'flex-start'
+            justifyContent: 'flex-start',
+            marginBottom: isMobile ? 20 : 0
           }}>
+            {/* ...contenido de tu Pokémon... */}
             <img
               src={team[activePokemonIndex].image}
               alt={team[activePokemonIndex].name}
@@ -690,13 +680,14 @@ function Combat() {
             </button>
           </div>
         ) : (
+          // ...contenedor de selección de equipo...
           <div style={{
             display: 'flex',
             flexWrap: 'wrap',
             justifyContent: 'center',
             gap: '15px',
             marginBottom: '30px',
-            backgroundColor: '#ededed', // Gris claro para tarjeta
+            backgroundColor: '#ededed',
             borderRadius: 12,
             padding: 16
           }}>
@@ -735,24 +726,27 @@ function Combat() {
             </button>
           </div>
         )}
+
         {/* Pokémon Rival */}
         {randomPokemon && (
           <div style={{
             border: "2px solid #b71c1c",
             padding: "15px",
             borderRadius: "12px",
-            width: "260px", // <-- Igual que el propio
-            minHeight: "420px", // <-- Igual que el propio
+            width: "260px",
+            minHeight: "420px",
             backgroundColor: '#ededed',
             color: '#222',
             boxShadow: '0 2px 10px rgba(183,28,28,0.12)',
             position: "relative",
-            marginLeft: '60px',
+            marginLeft: isMobile ? 0 : '60px',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            justifyContent: 'flex-start'
+            justifyContent: 'flex-start',
+            marginBottom: isMobile ? 20 : 0
           }}>
+            {/* ...contenido del Pokémon rival... */}
             <img src={randomPokemon.image} alt={randomPokemon.name} style={{ width: '120px', marginBottom: '10px' }} />
             <p style={{ fontWeight: '700', fontSize: '22px', margin: '8px 0' }}>{randomPokemon.name}</p>
             <p style={{ marginBottom: '8px', fontSize: '16px', color: '#7f8c8d' }}>
@@ -761,7 +755,6 @@ function Combat() {
             <p style={{ fontWeight: '600', color: '#c0392b', marginBottom: '15px', fontSize: '16px' }}>
               HP: {wildPokemonHP} / {randomPokemon.stats.hp}
             </p>
-            {/* NO mostrar movimientos del rival */}
             <button
               style={{
                 position: "absolute",
@@ -783,6 +776,49 @@ function Combat() {
               onClick={() => setInfoPokemon(randomPokemon)}
             >i</button>
           </div>
+        )}
+      </div>
+
+      {/* CONTENEDOR INFERIOR: LOG */}
+      <div
+        style={{
+          width: isMobile ? '70%' : '300px',
+          backgroundColor: '#ededed',
+          color: '#222',
+          padding: '15px',
+          borderRadius: '10px',
+          boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
+          maxHeight: isMobile ? '250px' : '600px', // Reducido en móvil
+          minHeight: isMobile ? '100px' : '200px', // Reducido en móvil
+          overflowY: 'auto',
+          fontSize: '14px',
+          margin: isMobile ? '0 auto 20px auto' : '0',
+          marginTop: isMobile ? 0 : 0,
+          marginBottom: isMobile ? 20 : 0,
+          marginLeft: isMobile ? 0 : 0,
+          marginRight: isMobile ? 0 : 0,
+          display: 'block'
+        }}
+      >
+        <div style={{
+          fontWeight: 'bold',
+          fontSize: '1.2em',
+          color: '#2c3e50',
+          marginBottom: '10px',
+          textAlign: 'left'
+        }}>
+          Turno actual: {turn}
+        </div>
+        <h4 style={{ marginBottom: '10px', color: '#2c3e50' }}>Historial del combate:</h4>
+        {combatLog.length === 0 ? (
+          <p style={{ color: '#999' }}><i>Aún no hay acciones.</i></p>
+        ) : (
+          <ul style={{ paddingLeft: '20px', margin: 0 }}>
+            {combatLog.slice().reverse().map((entry, i) => (
+              <li key={i} style={{ marginBottom: '6px', listStyle: 'none' }}
+                dangerouslySetInnerHTML={{ __html: entry }} />
+            ))}
+          </ul>
         )}
       </div>
       {/* Modal de selección de equipo */}
@@ -1103,92 +1139,194 @@ function Combat() {
       )}
       <div
         style={{
-          position: 'absolute',
-          bottom: 24,
-          right: 24,
-          background: '#ededed', // Gris claro para tarjeta
-          borderRadius: 16,
+          position: isMobile ? 'fixed' : 'absolute',
+          bottom: isMobile ? 0 : 24,
+          right: isMobile ? 0 : 24,
+          left: isMobile ? 0 : 'auto',
+          background: '#ededed',
+          borderRadius: isMobile ? '16px 16px 0 0' : 16,
           boxShadow: '0 4px 24px #0004',
-          padding: '16px 20px',
+          padding: isMobile ? '8px 0 0 0' : '16px 20px',
           zIndex: 100,
-          minWidth: 220,
-          maxWidth: 900,
-          color: '#222'
+          minWidth: isMobile ? 'unset' : 220,
+          maxWidth: isMobile ? 'unset' : 900,
+          color: '#222',
+          width: isMobile ? '100%' : 'auto',
+          transition: 'all 0.3s',
         }}
       >
-        <div style={{ fontWeight: "bold", color: "#222", marginBottom: 8, fontSize: 16 }}>
-          Equipo
-        </div>
-        <div style={{
-          display: "flex",
-          flexWrap: "nowrap", // Fuerza una sola fila
-          gap: 12,
-          justifyContent: "flex-start",
-          alignItems: "center",
-          overflowX: "auto", // Permite scroll horizontal si hay muchos
-          minHeight: 80
-        }}>
-          {team.map((pokemon, idx) => (
-            <div
-              key={pokemon.name}
+        {isMobile ? (
+          <>
+            <button
               style={{
-                opacity: teamHP[idx] > 0 ? 1 : 0.4,
-                filter: teamHP[idx] > 0 ? "none" : "grayscale(0.7)",
-                background: "#f5f7fa",
-                borderRadius: 8,
-                padding: 6,
-                width: 60,
-                textAlign: "center",
-                border: idx === activePokemonIndex ? "2px solid #ffcb05" : "2px solid #eee",
-                boxShadow: idx === activePokemonIndex ? "0 0 8px #ffcb05" : "0 2px 8px #0002",
-                position: "relative"
+                width: '100%',
+                background: '#3498db',
+                color: 'white',
+                border: 'none',
+                borderRadius: '16px 16px 0 0',
+                fontWeight: 'bold',
+                fontSize: 17,
+                padding: '12px 0',
+                cursor: 'pointer',
+                outline: 'none',
+                borderBottom: '1px solid #ccc',
               }}
+              onClick={() => setShowTeamMobile((v) => !v)}
             >
-              <img
-                src={pokemon.image}
-                alt={pokemon.name}
-                style={{
-                  width: 36,
-                  height: 36,
-                  objectFit: "contain",
-                  marginBottom: 2,
-                  filter: teamHP[idx] > 0 ? "none" : "grayscale(0.7)"
-                }}
-              />
+              {showTeamMobile ? 'Ocultar equipo ▲' : 'Mostrar equipo ▼'}
+            </button>
+            {showTeamMobile && (
               <div style={{
-                fontWeight: "bold",
-                fontSize: 13,
-                color: "#222"
-              }}>{pokemon.name}</div>
-              <div style={{
-                fontSize: 12,
-                color: teamHP[idx] > 0 ? "#27ae60" : "#c0392b"
+                display: "flex",
+                flexDirection: "column",
+                gap: 12,
+                justifyContent: "flex-start",
+                alignItems: "center",
+                overflowY: "auto",
+                minHeight: 80,
+                maxHeight: 300,
+                padding: 8,
               }}>
-                {teamHP[idx]} / {pokemon.stats?.hp || "??"}
+                {team.map((pokemon, idx) => (
+                  <div
+                    key={pokemon.name}
+                    style={{
+                      opacity: teamHP[idx] > 0 ? 1 : 0.4,
+                      filter: teamHP[idx] > 0 ? "none" : "grayscale(0.7)",
+                      background: "#f5f7fa",
+                      borderRadius: 8,
+                      padding: 6,
+                      width: "90%",
+                      textAlign: "center",
+                      border: idx === activePokemonIndex ? "2px solid #ffcb05" : "2px solid #eee",
+                      boxShadow: idx === activePokemonIndex ? "0 0 8px #ffcb05" : "0 2px 8px #0002",
+                      position: "relative"
+                    }}
+                  >
+                    <img
+                      src={pokemon.image}
+                      alt={pokemon.name}
+                      style={{
+                        width: 36,
+                        height: 36,
+                        objectFit: "contain",
+                        marginBottom: 2,
+                        filter: teamHP[idx] > 0 ? "none" : "grayscale(0.7)"
+                      }}
+                    />
+                    <div style={{
+                      fontWeight: "bold",
+                      fontSize: 13,
+                      color: "#222"
+                    }}>{pokemon.name}</div>
+                    <div style={{
+                      fontSize: 12,
+                      color: teamHP[idx] > 0 ? "#27ae60" : "#c0392b"
+                    }}>
+                      {teamHP[idx]} / {pokemon.stats?.hp || "??"}
+                    </div>
+                    <button
+                      style={{
+                        position: "absolute",
+                        top: 4,
+                        right: 4,
+                        background: "#3498db",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "50%",
+                        width: 20,
+                        height: 20,
+                        fontWeight: "bold",
+                        cursor: "pointer",
+                        fontSize: 14,
+                        lineHeight: "20px",
+                        padding: 0
+                      }}
+                      title="Ver información"
+                      onClick={() => setInfoPokemon(pokemon)}
+                    >i</button>
+                  </div>
+                ))}
               </div>
-              <button
-                style={{
-                  position: "absolute",
-                  top: 4,
-                  right: 4,
-                  background: "#3498db",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "50%",
-                  width: 20,
-                  height: 20,
-                  fontWeight: "bold",
-                  cursor: "pointer",
-                  fontSize: 14,
-                  lineHeight: "20px",
-                  padding: 0
-                }}
-                title="Ver información"
-                onClick={() => setInfoPokemon(pokemon)}
-              >i</button>
+            )}
+          </>
+        ) : (
+          <>
+            <div style={{ fontWeight: "bold", color: "#222", marginBottom: 8, fontSize: 16 }}>
+              Equipo
             </div>
-          ))}
-        </div>
+            <div style={{
+              display: "flex",
+              flexWrap: "nowrap",
+              gap: 12,
+              justifyContent: "flex-start",
+              alignItems: "center",
+              overflowX: "auto",
+              minHeight: 80
+            }}>
+              {team.map((pokemon, idx) => (
+                <div
+                  key={pokemon.name}
+                  style={{
+                    opacity: teamHP[idx] > 0 ? 1 : 0.4,
+                    filter: teamHP[idx] > 0 ? "none" : "grayscale(0.7)",
+                    background: "#f5f7fa",
+                    borderRadius: 8,
+                    padding: 6,
+                    width: 60,
+                    textAlign: "center",
+                    border: idx === activePokemonIndex ? "2px solid #ffcb05" : "2px solid #eee",
+                    boxShadow: idx === activePokemonIndex ? "0 0 8px #ffcb05" : "0 2px 8px #0002",
+                    position: "relative"
+                  }}
+                >
+                  <img
+                    src={pokemon.image}
+                    alt={pokemon.name}
+                    style={{
+                      width: 36,
+                      height: 36,
+                      objectFit: "contain",
+                      marginBottom: 2,
+                      filter: teamHP[idx] > 0 ? "none" : "grayscale(0.7)"
+                    }}
+                  />
+                  <div style={{
+                    fontWeight: "bold",
+                    fontSize: 13,
+                    color: "#222"
+                  }}>{pokemon.name}</div>
+                  <div style={{
+                    fontSize: 12,
+                    color: teamHP[idx] > 0 ? "#27ae60" : "#c0392b"
+                  }}>
+                    {teamHP[idx]} / {pokemon.stats?.hp || "??"}
+                  </div>
+                  <button
+                    style={{
+                      position: "absolute",
+                      top: 4,
+                      right: 4,
+                      background: "#3498db",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "50%",
+                      width: 20,
+                      height: 20,
+                      fontWeight: "bold",
+                      cursor: "pointer",
+                      fontSize: 14,
+                      lineHeight: "20px",
+                      padding: 0
+                    }}
+                    title="Ver información"
+                    onClick={() => setInfoPokemon(pokemon)}
+                  >i</button>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </div>
       {infoPokemon && (
         <div style={{
