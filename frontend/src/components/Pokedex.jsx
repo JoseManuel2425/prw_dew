@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+// Calcula la configuración de la cuadrícula según el ancho de la ventana
 function getResponsiveGrid() {
     const width = window.innerWidth;
     if (width <= 500) return { cols: 2, pageSize: 8 };
@@ -10,6 +11,7 @@ function getResponsiveGrid() {
     return { cols: 10, pageSize: 60 };
 }
 
+// Componente principal de la Pokédex
 function Pokedex({ user, setUser, pokemonList, loadingPokemons }) {
     const [team, setTeam] = useState([]);
     const [typeFilter, setTypeFilter] = useState("");
@@ -18,7 +20,7 @@ function Pokedex({ user, setUser, pokemonList, loadingPokemons }) {
     const [gridConfig, setGridConfig] = useState(getResponsiveGrid());
     const navigate = useNavigate();
 
-    //Botones
+    // Referencias para botones y filtros
     const combateBtnRef = useRef(null);
     const aleatorioBtnRef = useRef(null);
     const typeFilterRef = useRef(null);
@@ -26,7 +28,7 @@ function Pokedex({ user, setUser, pokemonList, loadingPokemons }) {
     const anteriorBtnRef = useRef(null);
     const siguienteBtnRef = useRef(null);
 
-    // Traduccion de tipos
+    // Traducción de tipos de Pokémon
     const TYPE_TRANSLATIONS = {
         normal: "Normal",
         fire: "Fuego",
@@ -48,12 +50,12 @@ function Pokedex({ user, setUser, pokemonList, loadingPokemons }) {
         fairy: "Hada"
     };
 
-    // Selector de cuadrícula y equipo
+    // Estados para selección y foco
     const [selectedIndex, setSelectedIndex] = useState(0);
     const [focusArea, setFocusArea] = useState("grid"); // "grid" o "team"
     const [selectedTeamIndex, setSelectedTeamIndex] = useState(0);
 
-    // Responsive: actualizar columnas y pageSize al cambiar tamaño ventana
+    // Actualiza la cuadrícula al cambiar el tamaño de la ventana
     useEffect(() => {
         function handleResize() {
             setGridConfig(getResponsiveGrid());
@@ -62,6 +64,7 @@ function Pokedex({ user, setUser, pokemonList, loadingPokemons }) {
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
+    // Obtiene todos los tipos y generaciones disponibles
     const allTypes = Array.from(new Set(pokemonList.flatMap(p => p.types || [])));
     const allGenerations = Array.from(new Set(pokemonList.map(p => p.generation)))
         .sort((a, b) => {
@@ -70,17 +73,19 @@ function Pokedex({ user, setUser, pokemonList, loadingPokemons }) {
             return numA - numB;
         });
 
+    // Añade un Pokémon al equipo
     const addToTeam = (pokemon) => {
         if (team.length < 6 && !team.some(p => p.name === pokemon.name)) {
             setTeam([...team, pokemon]);
         }
     };
 
+    // Quita un Pokémon del equipo
     const removeFromTeam = (pokemon) => {
         setTeam(team.filter(p => p.name !== pokemon.name));
     };
 
-    // Filtros y paginación
+    // Filtra y pagina los Pokémon según filtros y equipo
     const filteredPokemons = pokemonList.filter(
         p =>
             !team.some(tp => tp.name === p.name) &&
@@ -91,32 +96,31 @@ function Pokedex({ user, setUser, pokemonList, loadingPokemons }) {
     const totalPages = Math.ceil(filteredPokemons.length / gridConfig.pageSize);
     const paginatedPokemons = filteredPokemons.slice((page - 1) * gridConfig.pageSize, page * gridConfig.pageSize);
 
-    // Si cambian los filtros, resetea selector y página
+    // Resetea selección y página al cambiar filtros
     useEffect(() => {
         setSelectedIndex(0);
         setPage(1);
         setFocusArea("grid");
     }, [typeFilter, generationFilter, gridConfig.pageSize]);
 
-    // Si cambia la página, resetea el selector de cuadrícula
+    // Resetea selección al cambiar de página
     useEffect(() => {
         setSelectedIndex(0);
         setFocusArea("grid");
     }, [page]);
 
-    // Si cambia el equipo y el índice seleccionado es inválido, ajústalo
+    // Ajusta el índice seleccionado del equipo si es inválido
     useEffect(() => {
         if (selectedTeamIndex >= team.length && team.length > 0) {
             setSelectedTeamIndex(team.length - 1);
         }
     }, [team, selectedTeamIndex]);
 
-    // Manejo de teclado para mover el selector y alternar entre grid/equipo
+    // Maneja la navegación por teclado entre cuadrícula y equipo
     const handleKeyDown = useCallback(
         (e) => {
             if (!user) return;
 
-            // Si el foco está en un control nativo, NO interceptar Tab ni flechas
             const tag = document.activeElement.tagName;
             if (
                 tag === "BUTTON" ||
@@ -127,12 +131,11 @@ function Pokedex({ user, setUser, pokemonList, loadingPokemons }) {
                 return;
             }
 
-            // Cambiar foco con Tab SOLO para navegación personalizada
             if (e.key === "Tab") {
-                return; // NO interceptar, deja que el navegador haga el tabulado normal
+                return;
             }
 
-            // --- Selector en cuadrícula principal ---
+            // Navegación en la cuadrícula de Pokémon
             if (focusArea === "grid" && paginatedPokemons.length > 0) {
                 const cols = gridConfig.cols;
                 const rows = Math.ceil(gridConfig.pageSize / cols);
@@ -165,7 +168,7 @@ function Pokedex({ user, setUser, pokemonList, loadingPokemons }) {
                 }
             }
 
-            // --- Selector en equipo ---
+            // Navegación en el equipo
             if (focusArea === "team" && team.length > 0) {
                 switch (e.key) {
                     case "ArrowDown":
@@ -194,6 +197,7 @@ function Pokedex({ user, setUser, pokemonList, loadingPokemons }) {
 
     const selectedPokemon = paginatedPokemons[selectedIndex];
 
+    // Pantalla de carga
     const LoadingScreen = () => (
         <div
             style={{

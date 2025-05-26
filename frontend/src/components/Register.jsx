@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+// Componente de registro de usuario
 function Register({ onRegister }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [repeatPassword, setRepeatPassword] = useState("");
   const navigate = useNavigate();
 
+  // Maneja el registro de usuario
   const handleRegister = async () => {
     if (password !== repeatPassword) {
       alert("Las contraseñas no coinciden");
@@ -127,7 +129,7 @@ function Register({ onRegister }) {
         <button
           onClick={handleRegister}
           style={{
-            background: "#ffcb05", // <-- Solo amarillo
+            background: "#ffcb05",
             color: "#222",
             border: "none",
             borderRadius: "8px",
@@ -145,7 +147,7 @@ function Register({ onRegister }) {
           onClick={() => navigate("/login")}
           style={{
             marginTop: 16,
-            background: "#ffcb05", // <-- Solo amarillo
+            background: "#ffcb05",
             color: "#222",
             border: "none",
             borderRadius: "8px",

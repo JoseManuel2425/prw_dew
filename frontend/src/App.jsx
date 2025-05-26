@@ -5,6 +5,7 @@ import Login from "./components/Login";
 import Pokedex from "./components/Pokedex";
 import Combat from "./components/Combat";
 
+// Wrapper para el login, maneja el login y redirección
 function LoginWrapper({ onLogin }) {
   const navigate = useNavigate();
 
@@ -17,6 +18,7 @@ function LoginWrapper({ onLogin }) {
   return <Login onLogin={handleLogin} />;
 }
 
+// Wrapper para el registro, redirige al login tras registro
 function RegisterWrapper() {
   const navigate = useNavigate();
 
@@ -27,7 +29,9 @@ function RegisterWrapper() {
   return <Register onRegister={handleRegisterComplete} />;
 }
 
+// Componente principal de la app
 function App() {
+  // Estado del usuario autenticado
   const [user, setUser] = useState(() => {
     const storedUser = localStorage.getItem("user");
     return storedUser ? JSON.parse(storedUser) : null;
@@ -37,6 +41,7 @@ function App() {
   const [pokemonList, setPokemonList] = useState([]);
   const [loadingPokemons, setLoadingPokemons] = useState(true);
 
+  // Carga la lista de pokemons al montar la app
   useEffect(() => {
     setLoadingPokemons(true);
     fetch("http://localhost:8000/")
@@ -66,7 +71,6 @@ function App() {
           }
         />
         <Route path="/combat" element={user ? <Combat /> : <Navigate to="/login" />} />
-        {/* Ruta catch-all */}
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </Router>
