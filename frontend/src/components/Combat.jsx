@@ -566,7 +566,7 @@ function Combat() {
       position: 'relative',
       minHeight: '700px',
       display: 'flex',
-      flexDirection: 'column', // SIEMPRE column
+      flexDirection: 'column',
       alignItems: 'center'
     }}>
       <h2 style={{
@@ -577,210 +577,311 @@ function Combat() {
         textShadow: '1px 2px 8px #000'
       }}>¡Combate Pokémon!</h2>
 
-      {/* CONTENEDOR SUPERIOR: Pokémons */}
+      {/* CONTENEDOR FLEX PRINCIPAL */}
       <div
         style={{
           display: 'flex',
-          flexDirection: 'row', // SIEMPRE row, incluso en móvil
-          gap: isMobile ? 20 : 60,
-          alignItems: 'flex-start',
+          flexDirection: isMobile ? 'column' : 'row',
+          gap: isMobile ? 0 : 40,
+          alignItems: isMobile ? 'center' : 'flex-start',
           justifyContent: 'center',
           width: '100%',
           marginBottom: isMobile ? 24 : 0
         }}
       >
-        {/* Tu Pokémon o selección */}
-        {!showTeamSelection ? (
-          <div style={{
-            border: "2px solid #b71c1c",
-            padding: "15px",
-            borderRadius: "12px",
-            width: "260px",
-            minHeight: "420px",
-            backgroundColor: '#ededed',
-            color: '#222',
-            boxShadow: '0 2px 8px rgba(183,28,28,0.08)',
+        {/* LOG Combate - IZQUIERDA en desktop */}
+        {!isMobile && (
+          <div
+            style={{
+              width: '300px',
+              backgroundColor: '#ededed',
+              color: '#222',
+              padding: '15px',
+              borderRadius: '10px',
+              boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
+              maxHeight: '600px',
+              minHeight: '200px',
+              overflowY: 'auto',
+              fontSize: '14px',
+              marginRight: 0,
+              marginLeft: 0,
+              display: 'block'
+            }}
+          >
+            <div style={{
+              fontWeight: 'bold',
+              fontSize: '1.2em',
+              color: '#2c3e50',
+              marginBottom: '10px',
+              textAlign: 'left'
+            }}>
+              Turno actual: {turn}
+            </div>
+            <h4 style={{ marginBottom: '10px', color: '#2c3e50' }}>Historial del combate:</h4>
+            {combatLog.length === 0 ? (
+              <p style={{ color: '#999' }}><i>Aún no hay acciones.</i></p>
+            ) : (
+              <ul style={{ paddingLeft: '20px', margin: 0 }}>
+                {combatLog.slice().reverse().map((entry, i) => (
+                  <li key={i} style={{ marginBottom: '6px', listStyle: 'none' }}
+                    dangerouslySetInnerHTML={{ __html: entry }} />
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+
+        {/* CONTENEDOR SUPERIOR: Pokémons */}
+        <div
+          style={{
             display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'flex-start',
-            marginBottom: isMobile ? 20 : 0
-          }}>
-            {/* ...contenido de tu Pokémon... */}
-            <img
-              src={team[activePokemonIndex].image}
-              alt={team[activePokemonIndex].name}
-              style={{ width: '120px', marginBottom: '10px' }}
-            />
-            <p style={{ fontWeight: '700', fontSize: '22px', margin: '8px 0' }}>
-              {team[activePokemonIndex].name}
-            </p>
-            <p style={{ fontWeight: '600', margin: '5px 0', color: '#27ae60', fontSize: '16px' }}>
-              HP: {teamHP[activePokemonIndex]} / {team[activePokemonIndex].stats?.hp || '??'}
-            </p>
-            <h4 style={{ marginTop: '20px', marginBottom: '10px', color: '#34495e' }}>
-              Nivel: {team[activePokemonIndex].level}
-            </h4>
+            flexDirection: 'row',
+            gap: isMobile ? 20 : 60,
+            alignItems: 'flex-start',
+            justifyContent: 'center',
+            width: '100%',
+            marginBottom: isMobile ? 24 : 0
+          }}
+        >
+          {/* Tu Pokémon o selección */}
+          {!showTeamSelection ? (
+            <div style={{
+              border: "2px solid #b71c1c",
+              padding: "15px",
+              borderRadius: "12px",
+              width: "260px",
+              minHeight: "420px",
+              backgroundColor: '#ededed',
+              color: '#222',
+              boxShadow: '0 2px 8px rgba(183,28,28,0.08)',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'flex-start',
+              marginBottom: isMobile ? 20 : 0
+            }}>
+              {/* ...contenido de tu Pokémon... */}
+              <img
+                src={team[activePokemonIndex].image}
+                alt={team[activePokemonIndex].name}
+                style={{ width: '120px', marginBottom: '10px' }}
+              />
+              <p style={{ fontWeight: '700', fontSize: '22px', margin: '8px 0' }}>
+                {team[activePokemonIndex].name}
+              </p>
+              <p style={{ fontWeight: '600', margin: '5px 0', color: '#27ae60', fontSize: '16px' }}>
+                HP: {teamHP[activePokemonIndex]} / {team[activePokemonIndex].stats?.hp || '??'}
+              </p>
+              <h4 style={{ marginTop: '20px', marginBottom: '10px', color: '#34495e' }}>
+                Nivel: {team[activePokemonIndex].level}
+              </h4>
+              <div style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                justifyContent: 'center',
+                gap: '10px',
+                marginBottom: '20px'
+              }}>
+                {team[activePokemonIndex] && Array.isArray(team[activePokemonIndex].equippedMoves) && team[activePokemonIndex].equippedMoves.length > 0 ? (
+                  team[activePokemonIndex].equippedMoves.map((moveObj, idx) => (
+                    <button
+                      key={moveObj.move?.name || moveObj.name || idx}
+                      style={{
+                        padding: '8px 14px',
+                        borderRadius: '20px',
+                        border: 'none',
+                        backgroundColor: '#3498db',
+                        color: 'white',
+                        cursor: 'pointer',
+                        fontWeight: '600',
+                        fontSize: '14px',
+                        boxShadow: '0 2px 6px rgba(52, 152, 219, 0.4)',
+                        transition: 'background-color 0.3s',
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.backgroundColor = '#2980b9'}
+                      onMouseLeave={e => e.currentTarget.style.backgroundColor = '#3498db'}
+                      onClick={async () => {
+                        await handleTurn(moveObj.move?.name || moveObj.name, team[activePokemonIndex]);
+                      }}
+                    >
+                      {moveObj.move?.name || moveObj.name}
+                    </button>
+                  ))
+                ) : (
+                  <span style={{color:'#999'}}>No hay movimientos equipados.</span>
+                )}
+              </div>
+              <button
+                onClick={() => setShowTeamSelection(true)}
+                style={{
+                  padding: '10px 25px',
+                  borderRadius: '25px',
+                  border: 'none',
+                  backgroundColor: '#e67e22',
+                  color: 'white',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                  fontSize: '16px',
+                  boxShadow: '0 2px 8px rgba(230, 126, 34, 0.5)',
+                  transition: 'background-color 0.3s',
+                  display: 'block',
+                  margin: '0 auto'
+                }}
+                onMouseEnter={e => e.currentTarget.style.backgroundColor = '#d35400'}
+                onMouseLeave={e => e.currentTarget.style.backgroundColor = '#e67e22'}
+              >
+                Cambio
+              </button>
+            </div>
+          ) : (
+            // ...contenedor de selección de equipo...
             <div style={{
               display: 'flex',
               flexWrap: 'wrap',
               justifyContent: 'center',
-              gap: '10px',
-              marginBottom: '20px'
+              gap: '15px',
+              marginBottom: '30px',
+              backgroundColor: '#ededed',
+              borderRadius: 12,
+              padding: 16
             }}>
-              {team[activePokemonIndex] && Array.isArray(team[activePokemonIndex].equippedMoves) && team[activePokemonIndex].equippedMoves.length > 0 ? (
-                team[activePokemonIndex].equippedMoves.map((moveObj, idx) => (
-                  <button
-                    key={moveObj.move?.name || moveObj.name || idx}
+              {team.map((pokemon, index) => {
+                if (index === activePokemonIndex || teamHP[index] <= 0) return null;
+                return (
+                  <div
+                    key={pokemon.name}
                     style={{
-                      padding: '8px 14px',
-                      borderRadius: '20px',
-                      border: 'none',
-                      backgroundColor: '#3498db',
-                      color: 'white',
-                      cursor: 'pointer',
-                      fontWeight: '600',
-                      fontSize: '14px',
-                      boxShadow: '0 2px 6px rgba(52, 152, 219, 0.4)',
-                      transition: 'background-color 0.3s',
+                      border: "1px solid #ccc",
+                      padding: "10px",
+                      borderRadius: "8px",
+                      width: "180px",
+                      cursor: "pointer",
+                      margin: "10px auto"
                     }}
-                    onMouseEnter={e => e.currentTarget.style.backgroundColor = '#2980b9'}
-                    onMouseLeave={e => e.currentTarget.style.backgroundColor = '#3498db'}
                     onClick={async () => {
-                      await handleTurn(moveObj.move?.name || moveObj.name, team[activePokemonIndex]);
+                      setActivePokemonIndex(index);
+                      setShowTeamSelection(false);
+
+                      if (isManualSwitch) {
+                        setIsManualSwitch(false);
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                        await wildAttack(team[index]);
+                      }
                     }}
                   >
-                    {moveObj.move?.name || moveObj.name}
-                  </button>
-                ))
-              ) : (
-                <span style={{color:'#999'}}>No hay movimientos equipados.</span>
-              )}
+                    <img src={pokemon.image} alt={pokemon.name} style={{ width: '80px' }} />
+                    <p>{pokemon.name}</p>
+                    <p>HP: {teamHP[index]} / {pokemon.stats?.hp || '??'}</p>
+                  </div>
+                );
+              })}
+              <button onClick={() => setShowTeamSelection(false)} style={{ marginTop: "20px" }}>
+                Volver
+              </button>
             </div>
-            <button
-              onClick={() => setShowTeamSelection(true)}
-              style={{
-                padding: '10px 25px',
-                borderRadius: '25px',
-                border: 'none',
-                backgroundColor: '#e67e22',
-                color: 'white',
-                fontWeight: '700',
-                cursor: 'pointer',
-                fontSize: '16px',
-                boxShadow: '0 2px 8px rgba(230, 126, 34, 0.5)',
-                transition: 'background-color 0.3s',
-                display: 'block',
-                margin: '0 auto'
-              }}
-              onMouseEnter={e => e.currentTarget.style.backgroundColor = '#d35400'}
-              onMouseLeave={e => e.currentTarget.style.backgroundColor = '#e67e22'}
-            >
-              Cambio
-            </button>
-          </div>
-        ) : (
-          // ...contenedor de selección de equipo...
-          <div style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            justifyContent: 'center',
-            gap: '15px',
-            marginBottom: '30px',
-            backgroundColor: '#ededed',
-            borderRadius: 12,
-            padding: 16
-          }}>
-            {team.map((pokemon, index) => {
-              if (index === activePokemonIndex || teamHP[index] <= 0) return null;
-              return (
-                <div
-                  key={pokemon.name}
-                  style={{
-                    border: "1px solid #ccc",
-                    padding: "10px",
-                    borderRadius: "8px",
-                    width: "180px",
-                    cursor: "pointer",
-                    margin: "10px auto"
-                  }}
-                  onClick={async () => {
-                    setActivePokemonIndex(index);
-                    setShowTeamSelection(false);
+          )}
 
-                    if (isManualSwitch) {
-                      setIsManualSwitch(false);
-                      await new Promise(resolve => setTimeout(resolve, 100));
-                      await wildAttack(team[index]);
-                    }
-                  }}
-                >
-                  <img src={pokemon.image} alt={pokemon.name} style={{ width: '80px' }} />
-                  <p>{pokemon.name}</p>
-                  <p>HP: {teamHP[index]} / {pokemon.stats?.hp || '??'}</p>
-                </div>
-              );
-            })}
-            <button onClick={() => setShowTeamSelection(false)} style={{ marginTop: "20px" }}>
-              Volver
-            </button>
-          </div>
-        )}
-
-        {/* Pokémon Rival */}
-        {randomPokemon && (
-          <div style={{
-            border: "2px solid #b71c1c",
-            padding: "15px",
-            borderRadius: "12px",
-            width: "260px",
-            minHeight: "420px",
-            backgroundColor: '#ededed',
-            color: '#222',
-            boxShadow: '0 2px 10px rgba(183,28,28,0.12)',
-            position: "relative",
-            marginLeft: isMobile ? 0 : '60px',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'flex-start',
-            marginBottom: isMobile ? 20 : 0
-          }}>
-            {/* ...contenido del Pokémon rival... */}
-            <img src={randomPokemon.image} alt={randomPokemon.name} style={{ width: '120px', marginBottom: '10px' }} />
-            <p style={{ fontWeight: '700', fontSize: '22px', margin: '8px 0' }}>{randomPokemon.name}</p>
-            <p style={{ marginBottom: '8px', fontSize: '16px', color: '#7f8c8d' }}>
-              Tipos: {randomPokemon.types.join(', ')}
-            </p>
-            <p style={{ fontWeight: '600', color: '#c0392b', marginBottom: '15px', fontSize: '16px' }}>
-              HP: {wildPokemonHP} / {randomPokemon.stats.hp}
-            </p>
-            <button
-              style={{
-                position: "absolute",
-                top: 8,
-                right: 8,
-                background: "#3498db",
-                color: "white",
-                border: "none",
-                borderRadius: "50%",
-                width: 20,
-                height: 20,
-                fontWeight: "bold",
-                cursor: "pointer",
-                fontSize: 13,
-                lineHeight: "20px",
-                padding: 0
-              }}
-              title="Ver información del Pokémon salvaje"
-              onClick={() => setInfoPokemon(randomPokemon)}
-            >i</button>
-          </div>
-        )}
+          {/* Pokémon Rival */}
+          {randomPokemon && (
+            <div style={{
+              border: "2px solid #b71c1c",
+              padding: "15px",
+              borderRadius: "12px",
+              width: "260px",
+              minHeight: "420px",
+              backgroundColor: '#ededed',
+              color: '#222',
+              boxShadow: '0 2px 10px rgba(183,28,28,0.12)',
+              position: "relative",
+              marginLeft: isMobile ? 0 : '60px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'flex-start',
+              marginBottom: isMobile ? 20 : 0
+            }}>
+              {/* ...contenido del Pokémon rival... */}
+              <img src={randomPokemon.image} alt={randomPokemon.name} style={{ width: '120px', marginBottom: '10px' }} />
+              <p style={{ fontWeight: '700', fontSize: '22px', margin: '8px 0' }}>{randomPokemon.name}</p>
+              <p style={{ marginBottom: '8px', fontSize: '16px', color: '#7f8c8d' }}>
+                Tipos: {randomPokemon.types.join(', ')}
+              </p>
+              <p style={{ fontWeight: '600', color: '#c0392b', marginBottom: '15px', fontSize: '16px' }}>
+                HP: {wildPokemonHP} / {randomPokemon.stats.hp}
+              </p>
+              <button
+                style={{
+                  position: "absolute",
+                  top: 8,
+                  right: 8,
+                  background: "#3498db",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "50%",
+                  width: 20,
+                  height: 20,
+                  fontWeight: "bold",
+                  cursor: "pointer",
+                  fontSize: 13,
+                  lineHeight: "20px",
+                  padding: 0
+                }}
+                title="Ver información del Pokémon salvaje"
+                onClick={() => setInfoPokemon(randomPokemon)}
+              >i</button>
+            </div>
+          )}
+        </div>
       </div>
 
+      {/* LOG Combate - ABAJO en móvil */}
+      {isMobile && (
+        <div
+          style={{
+            width: '70%',
+            backgroundColor: '#ededed',
+            color: '#222',
+            padding: '15px',
+            borderRadius: '10px',
+            boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
+            maxHeight: '250px',
+            minHeight: '100px',
+            overflowY: 'auto',
+            fontSize: '14px',
+            margin: '0 auto 20px auto',
+            marginTop: 0,
+            marginBottom: 20,
+            marginLeft: 0,
+            marginRight: 0,
+            display: 'block'
+          }}
+        >
+          <div style={{
+            fontWeight: 'bold',
+            fontSize: '1.2em',
+            color: '#2c3e50',
+            marginBottom: '10px',
+            textAlign: 'left'
+          }}>
+            Turno actual: {turn}
+          </div>
+          <h4 style={{ marginBottom: '10px', color: '#2c3e50' }}>Historial del combate:</h4>
+          {combatLog.length === 0 ? (
+            <p style={{ color: '#999' }}><i>Aún no hay acciones.</i></p>
+          ) : (
+            <ul style={{ paddingLeft: '20px', margin: 0 }}>
+              {combatLog.slice().reverse().map((entry, i) => (
+                <li key={i} style={{ marginBottom: '6px', listStyle: 'none' }}
+                  dangerouslySetInnerHTML={{ __html: entry }} />
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
       {/* CONTENEDOR INFERIOR: LOG */}
-      <div
+      {/* Elimina este bloque, ya que el log solo debe mostrarse en un lugar según isMobile */}
+      {/* <div
         style={{
           width: isMobile ? '70%' : '300px',
           backgroundColor: '#ededed',
@@ -820,7 +921,7 @@ function Combat() {
             ))}
           </ul>
         )}
-      </div>
+      </div> */}
       {/* Modal de selección de equipo */}
       {showTeamSelection && (
         <div style={{
